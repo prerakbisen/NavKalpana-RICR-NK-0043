@@ -7,13 +7,9 @@ import EnergyLog from '../models/EnergyLog.js';
 import BodyMeasurement from '../models/BodyMeasurement.js';
 import User from '../models/User.js';
 
-/**
- * Gather complete user context for AI training
- * This creates a comprehensive profile of the user for personalized AI responses
- */
+
 export const gatherCompleteUserContext = async (user_id) => {
   try {
-    // Get all user data in parallel
     const [
       user,
       profile,
@@ -38,18 +34,14 @@ export const gatherCompleteUserContext = async (user_id) => {
       return null;
     }
 
-    // Calculate user statistics
     const stats = calculateUserStats(profile, allProgress, allHabitScores);
     
-    // Build comprehensive context
     const context = {
-      // User Info
       user: {
         name: user.name,
         email: user.email
       },
 
-      // Basic Profile
       profile: {
         age: profile.age,
         gender: profile.gender,
@@ -66,7 +58,6 @@ export const gatherCompleteUserContext = async (user_id) => {
         created_at: profile.created_at
       },
 
-      // Progress History
       progress_history: allProgress.map(p => ({
         week: p.week_number,
         weight_kg: p.weight_kg,
@@ -78,14 +69,12 @@ export const gatherCompleteUserContext = async (user_id) => {
         daily_logs: p.daily_logs
       })),
 
-      // Habit Scores
       habit_scores: allHabitScores.map(h => ({
         week: h.week_number,
         score: h.habit_score,
         streak: h.streak_count
       })),
 
-      // Workout History
       workout_history: allWorkouts.map(w => ({
         week: w.week_number,
         goal: w.goal,
@@ -94,7 +83,6 @@ export const gatherCompleteUserContext = async (user_id) => {
         workout_types: w.workouts.map(d => d.type).filter(t => !d.rest_day)
       })),
 
-      // Diet History
       diet_history: allDiets.map(d => ({
         week: d.week_number,
         calorie_target: d.daily_calorie_target,
@@ -103,21 +91,18 @@ export const gatherCompleteUserContext = async (user_id) => {
         fat_grams: d.fat_grams
       })),
 
-      // Energy Logs (Recent)
       recent_energy: allEnergyLogs.map(e => ({
         date: e.logged_at,
         energy_level: e.energy_level,
         notes: e.notes
       })),
 
-      // Body Measurements
       measurements: allMeasurements.map(m => ({
         date: m.measured_at,
         measurements: m.measurements,
         notes: m.notes
       })),
 
-      // Calculated Statistics
       statistics: stats
     };
 
@@ -128,9 +113,6 @@ export const gatherCompleteUserContext = async (user_id) => {
   }
 };
 
-/**
- * Calculate user statistics from historical data
- */
 const calculateUserStats = (profile, progressLogs, habitScores) => {
   const stats = {
     total_weeks_tracked: progressLogs.length,
@@ -149,20 +131,17 @@ const calculateUserStats = (profile, progressLogs, habitScores) => {
     return stats;
   }
 
-  // Calculate averages
   const totalWorkoutAdherence = progressLogs.reduce((sum, p) => sum + (p.workout_adherence_percent || 0), 0);
   const totalDietAdherence = progressLogs.reduce((sum, p) => sum + (p.diet_adherence_percent || 0), 0);
   
   stats.average_workout_adherence = Math.round(totalWorkoutAdherence / progressLogs.length);
   stats.average_diet_adherence = Math.round(totalDietAdherence / progressLogs.length);
 
-  // Weight change
   const firstWeight = progressLogs[0].weight_kg;
   const lastWeight = progressLogs[progressLogs.length - 1].weight_kg;
   stats.total_weight_change_kg = (lastWeight - firstWeight).toFixed(1);
   stats.average_weekly_weight_change = (stats.total_weight_change_kg / progressLogs.length).toFixed(2);
 
-  // Habit scores
   if (habitScores.length > 0) {
     const totalHabitScore = habitScores.reduce((sum, h) => sum + h.habit_score, 0);
     stats.average_habit_score = Math.round(totalHabitScore / habitScores.length);
@@ -170,7 +149,6 @@ const calculateUserStats = (profile, progressLogs, habitScores) => {
     stats.best_streak = Math.max(...habitScores.map(h => h.streak_count));
   }
 
-  // Consistency rating
   if (stats.average_workout_adherence >= 80 && stats.average_diet_adherence >= 80) {
     stats.consistency_rating = 'Excellent';
   } else if (stats.average_workout_adherence >= 60 && stats.average_diet_adherence >= 60) {
@@ -181,7 +159,6 @@ const calculateUserStats = (profile, progressLogs, habitScores) => {
     stats.consistency_rating = 'Needs Improvement';
   }
 
-  // Progress trend
   if (profile.goal === 'Weight Loss') {
     if (parseFloat(stats.total_weight_change_kg) < -2) {
       stats.progress_trend = 'Excellent - Losing weight steadily';
@@ -207,9 +184,6 @@ const calculateUserStats = (profile, progressLogs, habitScores) => {
   return stats;
 };
 
-/**
- * Format user context into a comprehensive prompt for AI
- */
 export const formatUserContextForAI = (context) => {
   if (!context) {
     return 'No user data available.';

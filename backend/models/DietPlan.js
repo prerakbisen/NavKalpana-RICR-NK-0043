@@ -26,7 +26,6 @@ const dietPlanSchema = new mongoose.Schema({
   supplement_suggestions: String,
   meal_prep_tips: String,
   adjustment_notes: String,
-  // Daily meals
   meals: [
     {
       meal_number: Number, // 1-5

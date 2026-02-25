@@ -63,7 +63,6 @@ export const getCurrentHabitScore = async (req, res) => {
   }
 };
 
-// Energy logging
 export const logEnergy = async (req, res) => {
   try {
     const { energy_level, notes } = req.body;
@@ -89,7 +88,6 @@ export const getRecentEnergyLogs = async (req, res) => {
   }
 };
 
-// Body measurements
 export const logMeasurements = async (req, res) => {
   try {
     const { measurements, notes } = req.body;
@@ -123,7 +121,6 @@ export const getAllMeasurements = async (req, res) => {
   }
 };
 
-// Drop-off detection
 export const checkDropoffRisk = async (req, res) => {
   try {
     const risk = await progressService.checkDropoffRisk(req.user_id);
@@ -133,7 +130,6 @@ export const checkDropoffRisk = async (req, res) => {
   }
 };
 
-// Goal forecasting
 export const forecastGoal = async (req, res) => {
   try {
     const forecast = await progressService.forecastGoalAchievement(req.user_id);

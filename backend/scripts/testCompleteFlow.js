@@ -21,7 +21,6 @@ const testCompleteFlow = async () => {
     await mongoose.connect(process.env.MONGODB_URI);
     console.log('✅ Connected to MongoDB\n');
     
-    // Test 1: Check Profile Model Schema
     console.log('1️⃣ Testing Profile Model Schema...');
     const profileSchema = Profile.schema.obj;
     const requiredFields = ['injuries_limitations', 'allergies', 'dietary_preferences', 'available_days_per_week'];
@@ -34,7 +33,6 @@ const testCompleteFlow = async () => {
       }
     }
     
-    // Test 2: Check if a test user has these fields
     console.log('\n2️⃣ Checking existing user profiles...');
     const sampleProfile = await Profile.findOne().limit(1);
     if (sampleProfile) {
@@ -47,7 +45,6 @@ const testCompleteFlow = async () => {
       console.log('   ℹ️  No profiles found in database');
     }
     
-    // Test 3: Check Progress Tracking
     console.log('\n3️⃣ Testing Progress Tracking...');
     const progressLog = await ProgressLog.findOne().limit(1);
     if (progressLog) {
@@ -60,7 +57,6 @@ const testCompleteFlow = async () => {
       console.log('   ℹ️  No progress logs found');
     }
     
-    // Test 4: Check Habit Scores
     console.log('\n4️⃣ Testing Habit Score Calculation...');
     const habitScore = await HabitScore.findOne().sort({ created_at: -1 }).limit(1);
     if (habitScore) {
@@ -73,7 +69,6 @@ const testCompleteFlow = async () => {
       console.log('   ℹ️  No habit scores found');
     }
     
-    // Test 5: Verify Groq API Configuration
     console.log('\n5️⃣ Checking Groq API Configuration...');
     if (process.env.GROQ_API_KEY && process.env.GROQ_API_KEY.trim() !== '') {
       console.log('   ✅ GROQ_API_KEY is configured');

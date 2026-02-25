@@ -1,7 +1,6 @@
 import Groq from 'groq-sdk';
 import { gatherCompleteUserContext, formatUserContextForAI } from './userContextService.js';
 
-// Lazy initialization - only create client when needed
 let groq = null;
 
 const getGroqClient = () => {
@@ -13,22 +12,16 @@ const getGroqClient = () => {
   return groq;
 };
 
-// Check if AI is available
 const isAIAvailable = () => {
   return process.env.GROQ_API_KEY && process.env.GROQ_API_KEY !== 'your_groq_api_key_here';
 };
 
-/**
- * Extract and parse JSON from AI response
- * Handles common issues like markdown code blocks, trailing commas, etc.
- */
+
 const extractAndParseJSON = (text) => {
-  // Remove markdown code blocks
   let cleanText = text.trim();
   cleanText = cleanText.replace(/```json\n?/gi, '').replace(/```\n?/g, '');
   cleanText = cleanText.trim();
   
-  // Extract JSON object (find first { to last })
   const firstBrace = cleanText.indexOf('{');
   const lastBrace = cleanText.lastIndexOf('}');
   
@@ -38,19 +31,14 @@ const extractAndParseJSON = (text) => {
   
   cleanText = cleanText.substring(firstBrace, lastBrace + 1);
   
-  // Try to parse
   try {
     return JSON.parse(cleanText);
   } catch (error) {
-    // Try to fix common JSON errors
-    // Remove trailing commas before } or ]
     cleanText = cleanText.replace(/,(\s*[}\]])/g, '$1');
     
-    // Try parsing again
     try {
       return JSON.parse(cleanText);
     } catch (secondError) {
-      // Log the problematic JSON for debugging
       console.error('Failed to parse JSON after cleanup:');
       console.error('Error:', secondError.message);
       console.error('JSON (first 1000 chars):', cleanText.substring(0, 1000));
@@ -59,9 +47,7 @@ const extractAndParseJSON = (text) => {
   }
 };
 
-// Generate AI-powered workout plan with COMPLETE user context
 export const generateAIWorkoutPlan = async (user_id, weekNumber) => {
-  // Gather ALL user data
   const userContext = await gatherCompleteUserContext(user_id);
   if (!userContext) {
     throw new Error('User profile not found');
@@ -183,14 +169,13 @@ IMPORTANT:
           content: prompt
         }
       ],
-      model: "llama-3.1-8b-instant", // Fastest instant model for quick responses
+      model: "llama-3.1-8b-instant", 
       temperature: 0.7,
       max_tokens: 2000
     });
 
     const text = completion.choices[0]?.message?.content || '';
     
-    // Clean up and extract JSON
     try {
       const parsedData = extractAndParseJSON(text);
       return parsedData;
@@ -205,7 +190,6 @@ IMPORTANT:
   }
 };
 
-// Generate AI-powered diet plan with COMPLETE user context
 export const generateAIDietPlan = async (user_id, weekNumber) => {
   const userContext = await gatherCompleteUserContext(user_id);
   if (!userContext) {
@@ -336,14 +320,13 @@ IMPORTANT:
           content: prompt
         }
       ],
-      model: "llama-3.1-8b-instant", // Fastest instant model for quick responses
+      model: "llama-3.1-8b-instant", 
       temperature: 0.7,
       max_tokens: 1500
     });
 
     const text = completion.choices[0]?.message?.content || '';
     
-    // Clean up and extract JSON
     try {
       const parsedData = extractAndParseJSON(text);
       return parsedData;
@@ -358,7 +341,6 @@ IMPORTANT:
   }
 };
 
-// Generate AI-powered coaching response with COMPLETE user context
 export const generateAICoachingResponse = async (user_id, question) => {
   const userContext = await gatherCompleteUserContext(user_id);
   if (!userContext) {
@@ -451,14 +433,13 @@ FORMATTING RULES:
           content: prompt
         }
       ],
-      model: "llama-3.1-8b-instant", // Fastest instant model for quick responses
+      model: "llama-3.1-8b-instant",
       temperature: 0.8,
       max_tokens: 800
     });
 
     const text = completion.choices[0]?.message?.content || '';
     
-    // Clean up and extract JSON
     try {
       const parsedData = extractAndParseJSON(text);
       return parsedData;

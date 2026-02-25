@@ -6,19 +6,16 @@ import Profile from '../models/Profile.js';
 import { calculateMacros } from '../utils/calculationUtils.js';
 
 export const generateDietPlanForUser = async (user_id, week_number = 1) => {
-  // Get user profile for goal and calorie target
   const profile = await Profile.findOne({ user_id });
   
   if (!profile) {
     throw new Error('Profile not found. Please complete profile setup first.');
   }
   
-  // Calculate macros
   const macros = calculateMacros(profile.daily_calorie_target, profile.goal);
   
   let meals, weekSummary, hydrationGoal, supplementSuggestions, mealPrepTips, adjustmentNotes;
   
-  // Try to use AI if API key is configured
   if (process.env.GROQ_API_KEY && 
       process.env.GROQ_API_KEY !== 'your_groq_api_key_here' && 
       process.env.GROQ_API_KEY.trim() !== '') {
@@ -33,7 +30,6 @@ export const generateDietPlanForUser = async (user_id, week_number = 1) => {
       adjustmentNotes = aiPlan.adjustment_notes;
     } catch (error) {
       console.error('Groq AI generation failed, falling back to template:', error.message);
-      // Fallback to template-based generation with dietary filtering
       meals = generateDietPlan(profile.daily_calorie_target, profile.goal, macros, profile.allergies, profile.dietary_preferences);
       weekSummary = `Week ${week_number} - ${profile.goal} Nutrition Plan`;
       if (profile.allergies || profile.dietary_preferences) {
@@ -42,7 +38,6 @@ export const generateDietPlanForUser = async (user_id, week_number = 1) => {
     }
   } else {
     console.log('Using template-based diet generation (Groq AI not configured)');
-    // Use template-based generation with dietary filtering
     meals = generateDietPlan(profile.daily_calorie_target, profile.goal, macros, profile.allergies, profile.dietary_preferences);
     weekSummary = `Week ${week_number} - ${profile.goal} Nutrition Plan`;
     if (profile.allergies || profile.dietary_preferences) {
@@ -50,7 +45,6 @@ export const generateDietPlanForUser = async (user_id, week_number = 1) => {
     }
   }
   
-  // Create diet plan document
   const dietPlan = new DietPlan({
     user_id,
     week_number,
@@ -73,7 +67,6 @@ export const getLatestDietPlan = async (user_id) => {
   const dietPlan = await DietPlan.findOne({ user_id }).sort({ created_at: -1 });
   
   if (!dietPlan) {
-    // Generate first week plan if none exists
     return await generateDietPlanForUser(user_id, 1);
   }
   

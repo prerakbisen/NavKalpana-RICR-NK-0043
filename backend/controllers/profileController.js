@@ -17,7 +17,6 @@ export const createProfile = async (req, res) => {
       injuries_limitations
     } = req.body;
     
-    // Validate required fields
     if (!age || !gender || !height_cm || !weight_kg || !activity_level || !experience_level || !goal || !target_weight_kg) {
       return res.status(400).json({ error: 'All required profile fields must be provided' });
     }

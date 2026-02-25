@@ -4,7 +4,6 @@ import authMiddleware from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// All measurement routes require authentication
 router.use(authMiddleware);
 
 router.post('/', measurementController.addMeasurement);

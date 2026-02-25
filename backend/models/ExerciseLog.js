@@ -20,11 +20,10 @@ const exerciseLogSchema = new mongoose.Schema({
   exercise_name: String,
   sets_completed: Number,
   sets_planned: Number,
-  // Array of actual performance per set
   set_details: [{
     set_number: Number,
     reps_completed: Number,
-    reps_planned: String, // e.g., "8-10"
+    reps_planned: String, //  "8-10"
     weight_kg: Number,
     difficulty: {
       type: String,

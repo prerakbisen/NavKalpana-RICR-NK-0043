@@ -4,7 +4,6 @@ import authMiddleware from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// All diet routes require authentication
 router.use(authMiddleware);
 
 router.post('/', dietController.generateDietPlan);

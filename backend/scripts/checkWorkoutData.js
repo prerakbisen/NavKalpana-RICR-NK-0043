@@ -9,7 +9,6 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/fitai')
 
 const checkData = async () => {
   try {
-    // Wait for connection
     await new Promise(resolve => setTimeout(resolve, 1000));
     
     const workouts = await mongoose.connection.db.collection('workoutplans').find({}).toArray();

@@ -2,7 +2,6 @@ import jwt from 'jsonwebtoken';
 
 const authMiddleware = (req, res, next) => {
   try {
-    // Get token from header
     const authHeader = req.headers.authorization;
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -11,10 +10,8 @@ const authMiddleware = (req, res, next) => {
 
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
     
-    // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-    // Attach user id to request
     req.user_id = decoded.user_id;
     next();
   } catch (error) {

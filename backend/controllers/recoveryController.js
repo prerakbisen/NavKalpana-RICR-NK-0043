@@ -1,6 +1,5 @@
 import { checkRecoveryNeeded, getWorkoutAdjustment } from '../services/recoveryService.js';
 
-// Get recovery status for user
 export const getRecoveryStatus = async (req, res) => {
   try {
     const userId = req.user_id;
@@ -19,7 +18,6 @@ export const getRecoveryStatus = async (req, res) => {
   }
 };
 
-// Get workout adjustment recommendation
 export const getWorkoutRecommendation = async (req, res) => {
   try {
     const { energy_level } = req.query;

@@ -4,7 +4,6 @@ import EnergyLog from '../models/EnergyLog.js';
 import { estimateWeeksToGoal, detectDropoffRisk } from '../utils/calculationUtils.js';
 
 export const logProgress = async (user_id, progressData, week_number) => {
-  // Calculate adherence percentages
   const workoutCompletions = progressData.daily_logs?.map(log => log.workout_completion) || [];
   const dietAdherences = progressData.daily_logs?.map(log => log.diet_adherence) || [];
   
@@ -21,7 +20,6 @@ export const logProgress = async (user_id, progressData, week_number) => {
   
   await progressLog.save();
   
-  // Calculate and save habit score
   await calculateAndSaveHabitScore(user_id, week_number, workoutAdherence, dietAdherence);
   
   return progressLog;
@@ -61,7 +59,6 @@ const calculateAndSaveHabitScore = async (user_id, week_number, workoutAdherence
   // Formula: (Workout Adherence × 0.60) + (Diet Adherence × 0.40)
   const habitScore = Math.round((workoutAdherence * 0.60) + (dietAdherence * 0.40));
   
-  // Get previous streak or start new one
   const previousScore = await HabitScore.findOne({ user_id }).sort({ week_number: -1 });
   let streak = 1;
   
@@ -90,7 +87,6 @@ export const getCurrentHabitScore = async (user_id) => {
   return await HabitScore.findOne({ user_id }).sort({ created_at: -1 });
 };
 
-// Energy logging
 export const logEnergy = async (user_id, energy_level, notes = '') => {
   const energyLog = new EnergyLog({
     user_id,
@@ -112,20 +108,16 @@ export const getRecentEnergyLogs = async (user_id, days = 7) => {
   }).sort({ created_at: -1 });
 };
 
-// Detect drop-off risk - Enhanced with Daily Logs
 export const checkDropoffRisk = async (user_id) => {
   // Import daily log service
   const DailyLog = (await import('../models/DailyLog.js')).default;
   
-  // Get recent daily logs (last 14 days)
   const recentLogs = await DailyLog.find({ user_id })
     .sort({ date: -1 })
     .limit(14);
   
-  // Get current habit score
   const habitScore = await getCurrentHabitScore(user_id);
   
-  // Calculate current streak
   let streak = 0;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -152,7 +144,6 @@ export const checkDropoffRisk = async (user_id) => {
   return detectDropoffRisk(recentLogs, habitScore?.habit_score, streak);
 };
 
-// Forecast goal achievement
 export const forecastGoalAchievement = async (user_id) => {
   const allProgress = await getAllProgress(user_id);
   
@@ -163,7 +154,6 @@ export const forecastGoalAchievement = async (user_id) => {
     };
   }
   
-  // Calculate average weekly weight change
   const weights = allProgress.map(p => p.weight_kg).filter(Boolean);
   
   if (weights.length < 2) {
@@ -180,11 +170,9 @@ export const forecastGoalAchievement = async (user_id) => {
   
   const avgWeeklyChange = weeklyChanges.reduce((a, b) => a + b, 0) / weeklyChanges.length;
   
-  // Get current profile to find target weight
   const lastProgress = allProgress[allProgress.length - 1];
   const currentWeight = lastProgress.weight_kg;
   
-  // This would need profile data to get target weight - for now just return the calculation
   return {
     estimated_weeks: Math.abs(avgWeeklyChange) > 0 ? Math.ceil(Math.abs(5 / avgWeeklyChange)) : null,
     avg_weekly_change: Math.round(avgWeeklyChange * 10) / 10,

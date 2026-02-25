@@ -26,7 +26,6 @@ export const beginnerWorkoutTemplate = {
   }
 };
 
-// Intermediate workout template - Push/Pull/Leg
 export const intermediateWorkoutTemplate = {
   'Push': {
     exercises: [
@@ -57,7 +56,6 @@ export const intermediateWorkoutTemplate = {
   }
 };
 
-// Advanced workout template
 export const advancedWorkoutTemplate = {
   'Heavy Compound': {
     exercises: [
@@ -84,12 +82,10 @@ export const advancedWorkoutTemplate = {
   }
 };
 
-// Apply intensity multiplier to exercises
 const applyIntensityMultiplier = (exercises, multiplier) => {
   return exercises.map(exercise => {
     const adjustedExercise = { ...exercise };
     
-    // Adjust sets based on multiplier
     if (multiplier < 1.0) {
       adjustedExercise.sets = Math.max(2, Math.floor(exercise.sets * multiplier));
       adjustedExercise.guidance += ' | Reduced volume for recovery';
@@ -102,7 +98,6 @@ const applyIntensityMultiplier = (exercises, multiplier) => {
   });
 };
 
-// Filter exercises based on injuries
 const filterExercisesByInjuries = (exercises, injuries) => {
   if (!injuries || injuries.trim() === '') return exercises;
   
@@ -120,21 +115,19 @@ const filterExercisesByInjuries = (exercises, injuries) => {
   return exercises.filter(exercise => {
     const exerciseName = exercise.name.toLowerCase();
     
-    // Check if exercise should be avoided based on injuries
     for (const injury of injuryKeywords) {
       const avoidExercises = injuryExerciseMap[injury] || [];
       for (const avoid of avoidExercises) {
         if (exerciseName.includes(avoid)) {
-          return false; // Exclude this exercise
+          return false; 
         }
       }
     }
     
-    return true; // Include this exercise
+    return true;
   });
 };
 
-// Get safe alternative exercises
 const getSafeAlternatives = (originalExercise, injuries) => {
   const alternatives = {
     'Squats': { name: 'Leg Press', sets: 3, reps: '10-12', rest_seconds: 90, guidance: 'Safer for knee/back issues', intensity_level: 'Moderate' },
@@ -159,22 +152,18 @@ export const generateWeeklyWorkout = (goal, experienceLevel, fatigueStatus, inju
     template = advancedWorkoutTemplate;
   }
   
-  // If fatigue is high, replace with recovery days
   if (fatigueStatus === 'Very Tired' || fatigueStatus === 'Slightly Fatigued') {
     return generateRecoveryWeek();
   }
   
-  // Adjust intensity based on activity level
   const intensityMultiplier = {
-    'Sedentary': 0.8,  // Reduce intensity for sedentary
+    'Sedentary': 0.8,  
     'Light': 0.9,
     'Moderate': 1.0,
-    'Active': 1.1      // Increase intensity for active
+    'Active': 1.1      
   }[activityLevel] || 1.0;
   
-  // Adapt based on experience and goal
   if (experienceLevel === 'Beginner') {
-    // Beginners: 3-4 days per week
     const daysToInclude = Math.min(trainingDaysPerWeek, 4);
     const workoutDays = [
       { day: 1, day_name: 'Monday', type: 'Full Body', exercises: applyIntensityMultiplier(filterExercisesByInjuries(template['Full Body 1'].exercises, injuries), intensityMultiplier), rest_day: false },
@@ -183,12 +172,10 @@ export const generateWeeklyWorkout = (goal, experienceLevel, fatigueStatus, inju
       { day: 6, day_name: 'Saturday', type: 'Full Body', exercises: applyIntensityMultiplier(filterExercisesByInjuries(template['Full Body 1'].exercises, injuries), intensityMultiplier), rest_day: false }
     ];
     
-    // Add training days based on frequency
     for (let i = 0; i < daysToInclude; i++) {
       week.push(workoutDays[i]);
     }
     
-    // Fill remaining days with rest
     const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     const usedDays = week.map(d => d.day);
     for (let i = 1; i <= 7; i++) {
@@ -199,7 +186,6 @@ export const generateWeeklyWorkout = (goal, experienceLevel, fatigueStatus, inju
     week.sort((a, b) => a.day - b.day);
     
   } else if (experienceLevel === 'Intermediate') {
-    // Intermediate: 4-6 days per week (PPL split)
     const daysToInclude = Math.min(trainingDaysPerWeek, 6);
     const workoutDays = [
       { day: 1, day_name: 'Monday', type: 'Push', exercises: applyIntensityMultiplier(filterExercisesByInjuries(template['Push'].exercises, injuries), intensityMultiplier), rest_day: false },
@@ -214,7 +200,6 @@ export const generateWeeklyWorkout = (goal, experienceLevel, fatigueStatus, inju
       week.push(workoutDays[i]);
     }
     
-    // Fill remaining days with rest
     const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     const usedDays = week.map(d => d.day);
     for (let i = 1; i <= 7; i++) {
@@ -225,7 +210,6 @@ export const generateWeeklyWorkout = (goal, experienceLevel, fatigueStatus, inju
     week.sort((a, b) => a.day - b.day);
     
   } else {
-    // Advanced: 5-6 days per week
     const daysToInclude = Math.min(trainingDaysPerWeek, 6);
     const workoutDays = [
       { day: 1, day_name: 'Monday', type: 'Heavy Compound', exercises: applyIntensityMultiplier(filterExercisesByInjuries(template['Heavy Compound'].exercises, injuries), intensityMultiplier), rest_day: false },
@@ -240,7 +224,6 @@ export const generateWeeklyWorkout = (goal, experienceLevel, fatigueStatus, inju
       week.push(workoutDays[i]);
     }
     
-    // Fill remaining days with rest
     const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     const usedDays = week.map(d => d.day);
     for (let i = 1; i <= 7; i++) {
@@ -251,7 +234,6 @@ export const generateWeeklyWorkout = (goal, experienceLevel, fatigueStatus, inju
     week.sort((a, b) => a.day - b.day);
   }
   
-  // Add injury note if exercises were filtered
   if (injuries && injuries.trim() !== '') {
     week.forEach(day => {
       if (day.exercises.length > 0) {

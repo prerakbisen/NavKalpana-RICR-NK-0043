@@ -8,11 +8,9 @@ const testAllAIFunctions = async () => {
   try {
     console.log('🚀 Starting comprehensive AI test...\n');
     
-    // Connect to MongoDB
     await mongoose.connect(process.env.MONGODB_URI);
     console.log('✅ MongoDB connected\n');
 
-    // Get a test user (first user in database)
     const User = mongoose.model('User');
     const testUser = await User.findOne();
     
@@ -24,7 +22,6 @@ const testAllAIFunctions = async () => {
     console.log(`📋 Testing with user: ${testUser.email}`);
     console.log(`🆔 User ID: ${testUser._id}\n`);
 
-    // Test 1: Workout Generation
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('TEST 1: AI WORKOUT GENERATION');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -50,7 +47,6 @@ const testAllAIFunctions = async () => {
       console.log('❌ Workout generation failed:', error.message);
     }
 
-    // Test 2: Diet Generation
     console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('TEST 2: AI DIET GENERATION');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -74,7 +70,6 @@ const testAllAIFunctions = async () => {
       console.log('❌ Diet generation failed:', error.message);
     }
 
-    // Test 3: Chatbot Response
     console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('TEST 3: AI CHATBOT RESPONSE');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -99,7 +94,6 @@ const testAllAIFunctions = async () => {
       console.log('❌ Chatbot response failed:', error.message);
     }
 
-    // Summary
     console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('TEST SUMMARY');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');

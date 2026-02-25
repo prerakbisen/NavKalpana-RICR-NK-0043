@@ -12,7 +12,6 @@ const progressLogSchema = new mongoose.Schema({
     default: Date.now
   },
   weight_kg: Number,
-  // Daily logs for the week
   daily_logs: [
     {
       day_number: Number, // 1-7
@@ -29,7 +28,6 @@ const progressLogSchema = new mongoose.Schema({
       }
     }
   ],
-  // Weekly aggregate
   workout_adherence_percent: Number,
   diet_adherence_percent: Number,
   avg_weight_change: Number,

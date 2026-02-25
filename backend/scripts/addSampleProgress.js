@@ -8,7 +8,6 @@ const __dirname = dirname(__filename);
 
 dotenv.config({ path: join(__dirname, '../.env') });
 
-// Import models
 import ProgressLog from '../models/ProgressLog.js';
 import HabitScore from '../models/HabitScore.js';
 import EnergyLog from '../models/EnergyLog.js';
@@ -21,7 +20,6 @@ const addSampleProgress = async () => {
     await mongoose.connect(process.env.MONGODB_URI);
     console.log('✅ Connected to MongoDB');
 
-    // Get the first user
     const user = await User.findOne();
     if (!user) {
       console.log('❌ No users found. Please register a user first.');
@@ -38,7 +36,6 @@ const addSampleProgress = async () => {
     console.log(`Starting weight: ${profile.weight_kg} kg`);
     console.log(`Goal: ${profile.goal}`);
 
-    // Clear existing progress data
     await ProgressLog.deleteMany({ user_id: user._id });
     await HabitScore.deleteMany({ user_id: user._id });
     await EnergyLog.deleteMany({ user_id: user._id });
@@ -49,13 +46,11 @@ const addSampleProgress = async () => {
     const isWeightLoss = profile.goal === 'Weight Loss';
     const weeklyChange = isWeightLoss ? -0.5 : 0.3; // kg per week
 
-    // Add 8 weeks of progress data
     for (let week = 1; week <= 8; week++) {
       const currentWeight = startWeight + (weeklyChange * week);
       const workoutAdherence = 70 + Math.random() * 25; // 70-95%
       const dietAdherence = 65 + Math.random() * 30; // 65-95%
       
-      // Create daily logs
       const dailyLogs = [];
       for (let day = 1; day <= 7; day++) {
         dailyLogs.push({
@@ -66,7 +61,6 @@ const addSampleProgress = async () => {
         });
       }
 
-      // Create progress log
       const progressLog = new ProgressLog({
         user_id: user._id,
         week_number: week,
@@ -80,7 +74,6 @@ const addSampleProgress = async () => {
       });
       await progressLog.save();
 
-      // Create habit score
       const habitScore = new HabitScore({
         user_id: user._id,
         week_number: week,
@@ -90,7 +83,6 @@ const addSampleProgress = async () => {
       });
       await habitScore.save();
 
-      // Add energy logs for this week
       for (let day = 0; day < 7; day++) {
         const energyLog = new EnergyLog({
           user_id: user._id,
@@ -101,7 +93,6 @@ const addSampleProgress = async () => {
         await energyLog.save();
       }
 
-      // Add body measurements every 2 weeks
       if (week % 2 === 0) {
         const measurement = new BodyMeasurement({
           user_id: user._id,

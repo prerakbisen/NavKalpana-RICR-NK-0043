@@ -1,7 +1,6 @@
 import BodyMeasurement from '../models/BodyMeasurement.js';
 import Profile from '../models/Profile.js';
 
-// Save initial measurements during profile setup
 export const saveInitialMeasurements = async (user_id, measurements) => {
   try {
     const profile = await Profile.findOne({ user_id });
@@ -9,7 +8,6 @@ export const saveInitialMeasurements = async (user_id, measurements) => {
       throw new Error('Profile not found');
     }
 
-    // Save to profile's initial_measurements
     profile.initial_measurements = {
       waist_cm: measurements.waist_cm || null,
       chest_cm: measurements.chest_cm || null,
@@ -19,12 +17,10 @@ export const saveInitialMeasurements = async (user_id, measurements) => {
       measured_at: new Date()
     };
     
-    // Set reminder date to 4 weeks from now
     profile.last_measurement_reminder = new Date();
     
     await profile.save();
 
-    // Also create first entry in BodyMeasurement collection
     const bodyMeasurement = new BodyMeasurement({
       user_id,
       date: new Date(),
@@ -51,7 +47,6 @@ export const saveInitialMeasurements = async (user_id, measurements) => {
   }
 };
 
-// Add new measurement entry
 export const addMeasurement = async (user_id, measurements, notes = '') => {
   try {
     const bodyMeasurement = new BodyMeasurement({
@@ -63,7 +58,6 @@ export const addMeasurement = async (user_id, measurements, notes = '') => {
 
     await bodyMeasurement.save();
 
-    // Update last_measurement_reminder in profile
     await Profile.findOneAndUpdate(
       { user_id },
       { last_measurement_reminder: new Date() }
@@ -75,7 +69,6 @@ export const addMeasurement = async (user_id, measurements, notes = '') => {
   }
 };
 
-// Get all measurements for a user
 export const getAllMeasurements = async (user_id) => {
   try {
     const measurements = await BodyMeasurement.find({ user_id }).sort({ date: 1 });
@@ -85,7 +78,6 @@ export const getAllMeasurements = async (user_id) => {
   }
 };
 
-// Get latest measurement
 export const getLatestMeasurement = async (user_id) => {
   try {
     const measurement = await BodyMeasurement.findOne({ user_id }).sort({ date: -1 });
@@ -95,7 +87,6 @@ export const getLatestMeasurement = async (user_id) => {
   }
 };
 
-// Check if measurement reminder is due (4 weeks)
 export const checkMeasurementReminder = async (user_id) => {
   try {
     const profile = await Profile.findOne({ user_id });
@@ -103,14 +94,13 @@ export const checkMeasurementReminder = async (user_id) => {
       return { reminder_due: false };
     }
 
-    // If no initial measurements, no reminder needed
     if (!profile.initial_measurements || !profile.initial_measurements.measured_at) {
       return { reminder_due: false };
     }
 
     const lastReminder = profile.last_measurement_reminder || profile.initial_measurements.measured_at;
     const fourWeeksAgo = new Date();
-    fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28); // 4 weeks = 28 days
+    fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28); 
 
     const reminderDue = new Date(lastReminder) <= fourWeeksAgo;
 
@@ -124,7 +114,6 @@ export const checkMeasurementReminder = async (user_id) => {
   }
 };
 
-// Compare measurements and calculate changes
 export const compareMeasurements = async (user_id) => {
   try {
     const profile = await Profile.findOne({ user_id });
@@ -140,7 +129,6 @@ export const compareMeasurements = async (user_id) => {
     const initial = profile.initial_measurements;
     const current = latestMeasurement.measurements;
 
-    // Calculate changes
     const changes = {
       waist_change: current.waist_cm ? (current.waist_cm - (initial.waist_cm || 0)).toFixed(1) : null,
       chest_change: current.chest_cm ? (current.chest_cm - (initial.chest_cm || 0)).toFixed(1) : null,
@@ -149,7 +137,6 @@ export const compareMeasurements = async (user_id) => {
       thighs_change: current.left_thigh_cm ? (current.left_thigh_cm - (initial.thighs_cm || 0)).toFixed(1) : null
     };
 
-    // Analyze based on goal
     const analysis = analyzeMeasurementProgress(profile.goal, changes);
 
     return {
@@ -164,7 +151,6 @@ export const compareMeasurements = async (user_id) => {
   }
 };
 
-// Analyze measurement progress based on goal
 const analyzeMeasurementProgress = (goal, changes) => {
   const analysis = {
     overall_progress: 'neutral',
@@ -174,7 +160,6 @@ const analyzeMeasurementProgress = (goal, changes) => {
   };
 
   if (goal === 'Weight Loss') {
-    // For weight loss, decreases are good
     if (changes.waist_change && parseFloat(changes.waist_change) < -2) {
       analysis.positive_indicators.push('Significant waist reduction - excellent progress!');
     } else if (changes.waist_change && parseFloat(changes.waist_change) > 0) {
@@ -188,7 +173,6 @@ const analyzeMeasurementProgress = (goal, changes) => {
     analysis.overall_progress = analysis.positive_indicators.length > analysis.concerns.length ? 'good' : 'needs_improvement';
     
   } else if (goal === 'Muscle Gain') {
-    // For muscle gain, increases in chest/arms/thighs are good, waist should stay stable
     if (changes.chest_change && parseFloat(changes.chest_change) > 2) {
       analysis.positive_indicators.push('Chest measurement increased - muscle growth detected!');
     }
@@ -208,7 +192,6 @@ const analyzeMeasurementProgress = (goal, changes) => {
     analysis.overall_progress = analysis.positive_indicators.length >= 2 ? 'excellent' : 'moderate';
     
   } else if (goal === 'Maintenance') {
-    // For maintenance, minimal changes are good
     const allChanges = Object.values(changes).filter(c => c !== null).map(c => Math.abs(parseFloat(c)));
     const avgChange = allChanges.reduce((a, b) => a + b, 0) / allChanges.length;
 
@@ -221,7 +204,6 @@ const analyzeMeasurementProgress = (goal, changes) => {
     }
   }
 
-  // Generate recommendations
   if (analysis.concerns.length > 0) {
     analysis.recommendations.push('Consider regenerating your workout and diet plans');
     analysis.recommendations.push('Consult with AI coach for personalized adjustments');
@@ -233,12 +215,10 @@ const analyzeMeasurementProgress = (goal, changes) => {
   return analysis;
 };
 
-// Get measurement history for visualization
 export const getMeasurementHistory = async (user_id) => {
   try {
     const measurements = await BodyMeasurement.find({ user_id }).sort({ date: 1 });
     
-    // Format for chart visualization
     const history = measurements.map(m => ({
       date: m.date,
       waist: m.measurements.waist_cm,

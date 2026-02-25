@@ -1,6 +1,6 @@
 import * as exerciseLogService from '../services/exerciseLogService.js';
 
-// Log exercise performance
+
 export const logExercise = async (req, res) => {
   try {
     const user_id = req.user_id;
@@ -11,7 +11,7 @@ export const logExercise = async (req, res) => {
   }
 };
 
-// Get exercise history
+
 export const getExerciseHistory = async (req, res) => {
   try {
     const user_id = req.user_id;
@@ -25,7 +25,7 @@ export const getExerciseHistory = async (req, res) => {
   }
 };
 
-// Get week exercises
+
 export const getWeekExercises = async (req, res) => {
   try {
     const user_id = req.user_id;
@@ -38,7 +38,7 @@ export const getWeekExercises = async (req, res) => {
   }
 };
 
-// Get progressive overload recommendations
+
 export const getProgressiveOverload = async (req, res) => {
   try {
     const user_id = req.user_id;
@@ -51,7 +51,7 @@ export const getProgressiveOverload = async (req, res) => {
   }
 };
 
-// Get weekly adherence
+
 export const getWeeklyAdherence = async (req, res) => {
   try {
     const user_id = req.user_id;

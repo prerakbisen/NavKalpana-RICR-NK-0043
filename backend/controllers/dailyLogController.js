@@ -1,6 +1,6 @@
 import * as dailyLogService from '../services/dailyLogService.js';
 
-// Create or update daily log
+
 export const logDaily = async (req, res) => {
   try {
     const user_id = req.user_id;
@@ -19,7 +19,7 @@ export const logDaily = async (req, res) => {
   }
 };
 
-// Get daily log for a specific date
+
 export const getDailyLog = async (req, res) => {
   try {
     const user_id = req.user_id;
@@ -38,7 +38,7 @@ export const getDailyLog = async (req, res) => {
   }
 };
 
-// Get logs for a date range
+
 export const getLogsInRange = async (req, res) => {
   try {
     const user_id = req.user_id;
@@ -53,7 +53,7 @@ export const getLogsInRange = async (req, res) => {
   }
 };
 
-// Get recent logs
+
 export const getRecentLogs = async (req, res) => {
   try {
     const user_id = req.user_id;
@@ -68,7 +68,7 @@ export const getRecentLogs = async (req, res) => {
   }
 };
 
-// Get current streak
+
 export const getStreak = async (req, res) => {
   try {
     const user_id = req.user_id;
@@ -82,7 +82,6 @@ export const getStreak = async (req, res) => {
   }
 };
 
-// Get daily statistics
 export const getDailyStats = async (req, res) => {
   try {
     const user_id = req.user_id;

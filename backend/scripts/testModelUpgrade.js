@@ -33,7 +33,6 @@ const testModelUpgrade = async () => {
     max_tokens: 300,
   };
   
-  // Test OLD model
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('TEST 1: OLD MODEL (llama-3.1-8b-instant)');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
@@ -50,7 +49,6 @@ const testModelUpgrade = async () => {
     console.log('Response:', oldResponse.substring(0, 200));
     console.log(`\n⏱️  Response time: ${oldTime}ms`);
     
-    // Try parsing
     try {
       const clean = oldResponse.replace(/```json\n?/gi, '').replace(/```\n?/g, '').trim();
       JSON.parse(clean);
@@ -62,7 +60,6 @@ const testModelUpgrade = async () => {
     console.log('❌ API call failed:', error.message, '\n');
   }
   
-  // Test NEW model
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('TEST 2: NEW MODEL (llama-3.3-70b-versatile)');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
@@ -79,7 +76,6 @@ const testModelUpgrade = async () => {
     console.log('Response:', newResponse.substring(0, 200));
     console.log(`\n⏱️  Response time: ${newTime}ms`);
     
-    // Try parsing
     try {
       const clean = newResponse.replace(/```json\n?/gi, '').replace(/```\n?/g, '').trim();
       JSON.parse(clean);

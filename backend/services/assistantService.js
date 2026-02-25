@@ -4,7 +4,6 @@ import Profile from '../models/Profile.js';
 import { generateAICoachingResponse } from './groqService.js';
 
 export const generateAssistantResponse = async (user_id, question) => {
-  // Get user data
   const profile = await Profile.findOne({ user_id });
   
   if (!profile) {
@@ -14,11 +13,9 @@ export const generateAssistantResponse = async (user_id, question) => {
     };
   }
   
-  // Debug: Check API key
   console.log('🔍 Checking Groq API key...');
   console.log('API Key exists:', !!process.env.GROQ_API_KEY);
   
-  // Try to use AI if API key is configured
   if (process.env.GROQ_API_KEY && 
       process.env.GROQ_API_KEY !== 'your_groq_api_key_here' && 
       process.env.GROQ_API_KEY.trim() !== '') {
@@ -27,21 +24,18 @@ export const generateAssistantResponse = async (user_id, question) => {
       return await generateAICoachingResponse(user_id, question);
     } catch (error) {
       console.error('❌ Groq AI generation failed, falling back to rule-based:', error.message);
-      // Fallback to rule-based responses
       const recentProgress = await ProgressLog.find({ user_id }).sort({ week_number: -1 }).limit(4);
       const habitScores = await HabitScore.find({ user_id }).sort({ week_number: -1 }).limit(4);
       return generateRuleBasedResponse(profile, recentProgress, habitScores, question);
     }
   } else {
     console.log('⚠️  Using rule-based responses (Groq API not configured)');
-    // Use rule-based responses
     const recentProgress = await ProgressLog.find({ user_id }).sort({ week_number: -1 }).limit(4);
     const habitScores = await HabitScore.find({ user_id }).sort({ week_number: -1 }).limit(4);
     return generateRuleBasedResponse(profile, recentProgress, habitScores, question);
   }
 };
 
-// Original rule-based response logic as fallback
 const generateRuleBasedResponse = (profile, recentProgress, habitScores, question) => {
   if (recentProgress.length === 0) {
     return {
@@ -51,30 +45,24 @@ const generateRuleBasedResponse = (profile, recentProgress, habitScores, questio
     };
   }
   
-  // Analyze the question and provide rule-based responses
   const lowerQuestion = question.toLowerCase();
   
-  // Weight loss related
   if (lowerQuestion.includes('weight loss') || lowerQuestion.includes('not losing weight') || lowerQuestion.includes('plateau')) {
     return generateWeightLossResponse(profile, recentProgress, habitScores);
   }
   
-  // Protein related
   if (lowerQuestion.includes('protein') || lowerQuestion.includes('muscle building')) {
     return generateProteinResponse(profile, recentProgress);
   }
   
-  // Cardio related
   if (lowerQuestion.includes('cardio') || lowerQuestion.includes('skip cardio')) {
     return generateCardioResponse(profile, recentProgress);
   }
   
-  // Fatigue related
   if (lowerQuestion.includes('tired') || lowerQuestion.includes('fatigue') || lowerQuestion.includes('recovery')) {
     return generateFatigueResponse(profile, recentProgress);
   }
   
-  // Generic motivation
   return generateMotivationalResponse(profile, habitScores);
 };
 
@@ -114,7 +102,6 @@ const generateWeightLossResponse = (profile, recentProgress, habitScores) => {
     };
   }
   
-  // Both are good but still not losing weight - might need calorie adjustment
   return {
     response: 'You\'re doing well with adherence but may need to adjust your calorie target. Consider reducing by 100-200 kcal or adding more cardio.',
     steps: [

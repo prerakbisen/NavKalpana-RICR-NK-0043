@@ -1,6 +1,6 @@
 import * as measurementService from '../services/measurementService.js';
 
-// Add new measurement
+
 export const addMeasurement = async (req, res) => {
   try {
     const { measurements, notes } = req.body;
@@ -16,7 +16,7 @@ export const addMeasurement = async (req, res) => {
   }
 };
 
-// Get all measurements
+
 export const getAllMeasurements = async (req, res) => {
   try {
     const measurements = await measurementService.getAllMeasurements(req.user_id);
@@ -26,7 +26,7 @@ export const getAllMeasurements = async (req, res) => {
   }
 };
 
-// Get latest measurement
+
 export const getLatestMeasurement = async (req, res) => {
   try {
     const measurement = await measurementService.getLatestMeasurement(req.user_id);
@@ -36,7 +36,7 @@ export const getLatestMeasurement = async (req, res) => {
   }
 };
 
-// Check if measurement reminder is due
+
 export const checkReminder = async (req, res) => {
   try {
     const reminder = await measurementService.checkMeasurementReminder(req.user_id);
@@ -46,7 +46,7 @@ export const checkReminder = async (req, res) => {
   }
 };
 
-// Compare measurements and get analysis
+
 export const compareMeasurements = async (req, res) => {
   try {
     const comparison = await measurementService.compareMeasurements(req.user_id);
@@ -56,7 +56,7 @@ export const compareMeasurements = async (req, res) => {
   }
 };
 
-// Get measurement history for visualization
+
 export const getMeasurementHistory = async (req, res) => {
   try {
     const history = await measurementService.getMeasurementHistory(req.user_id);

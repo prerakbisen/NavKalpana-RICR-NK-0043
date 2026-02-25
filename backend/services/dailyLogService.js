@@ -2,7 +2,6 @@ import DailyLog from '../models/DailyLog.js';
 import HabitScore from '../models/HabitScore.js';
 import ProgressLog from '../models/ProgressLog.js';
 
-// Create or update daily log
 export const createOrUpdateDailyLog = async (user_id, date, logData) => {
   const startOfDay = new Date(date);
   startOfDay.setHours(0, 0, 0, 0);
@@ -27,13 +26,11 @@ export const createOrUpdateDailyLog = async (user_id, date, logData) => {
     }
   );
   
-  // Update habit score after logging
   await updateHabitScore(user_id);
   
   return dailyLog;
 };
 
-// Get daily log for a specific date
 export const getDailyLog = async (user_id, date) => {
   const startOfDay = new Date(date);
   startOfDay.setHours(0, 0, 0, 0);
@@ -47,7 +44,6 @@ export const getDailyLog = async (user_id, date) => {
   });
 };
 
-// Get logs for a date range
 export const getLogsInRange = async (user_id, startDate, endDate) => {
   return await DailyLog.find({
     user_id,
@@ -55,7 +51,6 @@ export const getLogsInRange = async (user_id, startDate, endDate) => {
   }).sort({ date: -1 });
 };
 
-// Get recent logs
 export const getRecentLogs = async (user_id, days = 30) => {
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - days);
@@ -66,9 +61,7 @@ export const getRecentLogs = async (user_id, days = 30) => {
   }).sort({ date: -1 });
 };
 
-// Calculate weekly adherence
 export const calculateWeeklyAdherence = async (user_id, weekNumber) => {
-  // Get logs for the specific week
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - (startDate.getDay() + (7 * (weekNumber - 1))));
   startDate.setHours(0, 0, 0, 0);
@@ -102,7 +95,6 @@ export const calculateWeeklyAdherence = async (user_id, weekNumber) => {
   };
 };
 
-// Calculate current streak
 export const calculateStreak = async (user_id) => {
   const logs = await DailyLog.find({ user_id }).sort({ date: -1 }).limit(90);
   
@@ -122,12 +114,10 @@ export const calculateStreak = async (user_id) => {
     expectedDate.setDate(expectedDate.getDate() - i);
     expectedDate.setHours(0, 0, 0, 0);
     
-    // Check if log is for the expected date
     if (logDate.getTime() !== expectedDate.getTime()) {
       break;
     }
     
-    // Check if both workout and diet were completed
     if (logs[i].workout_completed && logs[i].diet_followed) {
       streak++;
     } else {
@@ -138,7 +128,6 @@ export const calculateStreak = async (user_id) => {
   return streak;
 };
 
-// Update habit score based on recent logs
 export const updateHabitScore = async (user_id) => {
   const recentLogs = await getRecentLogs(user_id, 7);
   
@@ -146,23 +135,18 @@ export const updateHabitScore = async (user_id) => {
     return null;
   }
   
-  // Calculate adherence for the past 7 days
   const workoutDays = recentLogs.filter(log => log.workout_completed).length;
   const dietDays = recentLogs.filter(log => log.diet_followed).length;
   
   const workoutAdherence = Math.round((workoutDays / 7) * 100);
   const dietAdherence = Math.round((dietDays / 7) * 100);
   
-  // Calculate habit score (weighted average)
   const habitScore = Math.round((workoutAdherence * 0.5) + (dietAdherence * 0.5));
   
-  // Calculate streak
   const streak = await calculateStreak(user_id);
   
-  // Get current week number
   const weekNumber = Math.ceil((new Date() - new Date(new Date().getFullYear(), 0, 1)) / (7 * 24 * 60 * 60 * 1000));
   
-  // Update or create habit score
   const habitScoreDoc = await HabitScore.findOneAndUpdate(
     { user_id, week_number: weekNumber },
     {
@@ -183,7 +167,6 @@ export const updateHabitScore = async (user_id) => {
   return habitScoreDoc;
 };
 
-// Get statistics for dashboard
 export const getDailyStats = async (user_id) => {
   const recentLogs = await getRecentLogs(user_id, 30);
   const streak = await calculateStreak(user_id);

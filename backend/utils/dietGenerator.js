@@ -1,4 +1,3 @@
-// Filter meals based on allergies and dietary preferences
 const filterMealsByDietaryRestrictions = (meals, allergies, dietaryPreferences) => {
   if ((!allergies || allergies.trim() === '') && (!dietaryPreferences || dietaryPreferences.trim() === '')) {
     return meals;
@@ -7,7 +6,6 @@ const filterMealsByDietaryRestrictions = (meals, allergies, dietaryPreferences) 
   const allergyList = allergies ? allergies.toLowerCase().split(',').map(a => a.trim()) : [];
   const preferences = dietaryPreferences ? dietaryPreferences.toLowerCase().trim() : '';
   
-  // Allergen food mapping
   const allergenFoods = {
     'nuts': ['peanut', 'almond', 'walnut', 'cashew', 'nut'],
     'dairy': ['milk', 'cheese', 'yogurt', 'butter', 'cream', 'whey', 'casein'],
@@ -19,7 +17,6 @@ const filterMealsByDietaryRestrictions = (meals, allergies, dietaryPreferences) 
     'lactose': ['milk', 'cheese', 'yogurt', 'dairy']
   };
   
-  // Dietary preference restrictions
   const dietaryRestrictions = {
     'vegetarian': ['chicken', 'beef', 'pork', 'fish', 'salmon', 'tuna', 'turkey', 'lamb', 'meat'],
     'vegan': ['chicken', 'beef', 'pork', 'fish', 'salmon', 'tuna', 'turkey', 'lamb', 'meat', 'egg', 'milk', 'cheese', 'yogurt', 'dairy', 'whey'],
@@ -32,19 +29,16 @@ const filterMealsByDietaryRestrictions = (meals, allergies, dietaryPreferences) 
     let description = meal.description;
     let shouldModify = false;
     
-    // Check for allergens
     for (const allergy of allergyList) {
       const avoidFoods = allergenFoods[allergy] || [allergy];
       for (const food of avoidFoods) {
         if (description.toLowerCase().includes(food)) {
           shouldModify = true;
-          // Replace with safe alternative
           description = description.replace(new RegExp(food, 'gi'), getSafeAlternative(food, preferences));
         }
       }
     }
     
-    // Check for dietary preferences
     if (preferences) {
       const restrictedFoods = dietaryRestrictions[preferences] || [];
       for (const food of restrictedFoods) {
@@ -64,10 +58,8 @@ const filterMealsByDietaryRestrictions = (meals, allergies, dietaryPreferences) 
   });
 };
 
-// Get safe food alternatives
 const getSafeAlternative = (food, preference) => {
   const alternatives = {
-    // Protein alternatives
     'chicken': preference === 'vegan' ? 'tofu' : preference === 'vegetarian' ? 'paneer' : 'turkey',
     'beef': preference === 'vegan' ? 'tempeh' : preference === 'vegetarian' ? 'lentils' : 'chicken',
     'pork': preference === 'vegan' ? 'seitan' : preference === 'vegetarian' ? 'chickpeas' : 'chicken',
@@ -75,31 +67,26 @@ const getSafeAlternative = (food, preference) => {
     'salmon': preference === 'vegan' ? 'tofu' : preference === 'vegetarian' ? 'eggs' : 'chicken',
     'turkey': preference === 'vegan' ? 'tempeh' : preference === 'vegetarian' ? 'beans' : 'chicken',
     
-    // Dairy alternatives
     'milk': 'almond milk',
     'cheese': 'nutritional yeast',
     'yogurt': 'coconut yogurt',
     'butter': 'olive oil',
     'whey': 'pea protein',
     
-    // Grain alternatives
     'rice': 'cauliflower rice',
     'pasta': 'zucchini noodles',
     'bread': 'lettuce wrap',
     'oats': 'chia seeds',
     
-    // Nut alternatives
     'peanut': 'sunflower seed',
     'almond': 'pumpkin seed',
     
-    // Egg alternatives
     'egg': 'flax egg'
   };
   
   return alternatives[food.toLowerCase()] || 'protein alternative';
 };
 
-// Generate diet plan based on calorie target and macros
 export const generateDietPlan = (daily_calorie_target, goal, macros, allergies = '', dietaryPreferences = '') => {
   const mealsPerDay = 4; // Default to 4 meals
   const caloriesPerMeal = Math.round(daily_calorie_target / mealsPerDay);
@@ -151,7 +138,6 @@ export const generateDietPlan = (daily_calorie_target, goal, macros, allergies =
     }
   ];
   
-  // Adjust for weight loss (add extra protein meal)
   if (goal === 'Weight Loss') {
     meals.push({
       meal_number: 5,
@@ -166,7 +152,6 @@ export const generateDietPlan = (daily_calorie_target, goal, macros, allergies =
     });
   }
   
-  // Filter meals based on allergies and dietary preferences
   meals = filterMealsByDietaryRestrictions(meals, allergies, dietaryPreferences);
   
   return meals;

@@ -12,11 +12,9 @@ const testNewFeatures = async () => {
   try {
     console.log('🚀 Testing All New Features...\n');
     
-    // Connect to MongoDB
     await mongoose.connect(process.env.MONGODB_URI);
     console.log('✅ MongoDB connected\n');
 
-    // Get test user
     const testUser = await User.findOne();
     if (!testUser) {
       console.log('❌ No users found. Please create a user first.');
@@ -26,7 +24,6 @@ const testNewFeatures = async () => {
     console.log(`📋 Testing with user: ${testUser.email}`);
     console.log(`🆔 User ID: ${testUser._id}\n`);
 
-    // Get or create profile with test data
     let profile = await Profile.findOne({ user_id: testUser._id });
     
     if (!profile) {
@@ -54,7 +51,6 @@ const testNewFeatures = async () => {
       await profile.save();
       console.log('✅ Test profile created\n');
     } else {
-      // Update profile with test data
       profile.dietary_preferences = 'vegetarian';
       profile.allergies = 'dairy, nuts';
       profile.injuries_limitations = 'knee, shoulder';
@@ -64,7 +60,6 @@ const testNewFeatures = async () => {
       console.log('✅ Profile updated with test data\n');
     }
 
-    // TEST 1: Injury Filtering in Workouts
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('TEST 1: INJURY FILTERING IN WORKOUTS');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -76,7 +71,6 @@ const testNewFeatures = async () => {
       console.log('✅ Workout plan generated');
       console.log(`📊 ${workoutPlan.workouts.length} days planned`);
       
-      // Check for filtered exercises
       let hasSquats = false;
       let hasLegPress = false;
       let hasOverheadPress = false;
@@ -102,7 +96,6 @@ const testNewFeatures = async () => {
       console.log('❌ Workout generation failed:', error.message);
     }
 
-    // TEST 2: Allergy/Preference Filtering in Diet
     console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('TEST 2: ALLERGY/PREFERENCE FILTERING IN DIET');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -115,7 +108,6 @@ const testNewFeatures = async () => {
       console.log('✅ Diet plan generated');
       console.log(`📊 ${dietPlan.meals.length} meals planned`);
       
-      // Check for filtered foods
       let hasDairy = false;
       let hasNuts = false;
       let hasMeat = false;
@@ -138,7 +130,6 @@ const testNewFeatures = async () => {
       console.log('❌ Diet generation failed:', error.message);
     }
 
-    // TEST 3: Activity Level Integration
     console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('TEST 3: ACTIVITY LEVEL INTEGRATION');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -164,14 +155,12 @@ const testNewFeatures = async () => {
       console.log('❌ Test failed:', error.message);
     }
 
-    // TEST 4: Progressive Overload (Simulation)
     console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('TEST 4: PROGRESSIVE OVERLOAD SYSTEM');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('Simulating exercise logs...\n');
     
     try {
-      // Simulate logging exercises
       const exerciseLog1 = await logExercise(testUser._id, {
         workout_plan_id: new mongoose.Types.ObjectId(),
         week_number: 1,
@@ -204,7 +193,6 @@ const testNewFeatures = async () => {
       
       console.log('✅ Exercise logs created');
       
-      // Calculate progressive overload
       const recommendation = await calculateProgressiveOverload(testUser._id, 'Bench Press');
       console.log('\n📈 Progressive Overload Recommendation:');
       console.log(`   Action: ${recommendation.recommendation}`);
@@ -224,7 +212,6 @@ const testNewFeatures = async () => {
       console.log('❌ Progressive overload test failed:', error.message);
     }
 
-    // Summary
     console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('TEST SUMMARY');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');

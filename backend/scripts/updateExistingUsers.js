@@ -9,11 +9,9 @@ const updateExistingUsers = async () => {
     await mongoose.connect(process.env.MONGODB_URI);
     console.log('Connected to MongoDB');
 
-    // Update all existing users to have last_login set to their created_at date
-    // This makes them "returning users" by default
     const result = await User.updateMany(
-      { last_login: { $exists: false } }, // Users without last_login field
-      { $set: { last_login: new Date() } } // Set to current date
+      { last_login: { $exists: false } }, 
+      { $set: { last_login: new Date() } } 
     );
 
     console.log(`✅ Updated ${result.modifiedCount} existing users`);

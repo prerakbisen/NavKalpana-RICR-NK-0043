@@ -12,7 +12,6 @@ const testMeasurementSystem = async () => {
     await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/fitai');
     console.log('✅ Connected to MongoDB\n');
 
-    // Find a test user
     const user = await User.findOne();
     if (!user) {
       console.log('❌ No users found. Please create a user first.');
@@ -21,7 +20,6 @@ const testMeasurementSystem = async () => {
 
     console.log(`📋 Testing with user: ${user.name} (${user.email})\n`);
 
-    // Test 1: Save initial measurements
     console.log('TEST 1: Save Initial Measurements');
     console.log('-----------------------------------');
     try {
@@ -42,7 +40,6 @@ const testMeasurementSystem = async () => {
     }
     console.log('');
 
-    // Test 2: Check reminder status
     console.log('TEST 2: Check Reminder Status');
     console.log('-----------------------------------');
     const reminderStatus = await measurementService.checkMeasurementReminder(user._id);
@@ -51,7 +48,6 @@ const testMeasurementSystem = async () => {
     console.log('Last reminder date:', reminderStatus.last_reminder_date);
     console.log('');
 
-    // Test 3: Add new measurement
     console.log('TEST 3: Add New Measurement');
     console.log('-----------------------------------');
     const newMeasurements = {
@@ -74,7 +70,6 @@ const testMeasurementSystem = async () => {
     console.log('Measurements:', newEntry.measurements);
     console.log('');
 
-    // Test 4: Get all measurements
     console.log('TEST 4: Get All Measurements');
     console.log('-----------------------------------');
     const allMeasurements = await measurementService.getAllMeasurements(user._id);
@@ -84,7 +79,6 @@ const testMeasurementSystem = async () => {
     });
     console.log('');
 
-    // Test 5: Get latest measurement
     console.log('TEST 5: Get Latest Measurement');
     console.log('-----------------------------------');
     const latest = await measurementService.getLatestMeasurement(user._id);
@@ -93,7 +87,6 @@ const testMeasurementSystem = async () => {
     console.log('Measurements:', latest.measurements);
     console.log('');
 
-    // Test 6: Compare measurements
     console.log('TEST 6: Compare Measurements');
     console.log('-----------------------------------');
     const comparison = await measurementService.compareMeasurements(user._id);
@@ -115,7 +108,6 @@ const testMeasurementSystem = async () => {
     }
     console.log('');
 
-    // Test 7: Get measurement history
     console.log('TEST 7: Get Measurement History');
     console.log('-----------------------------------');
     const history = await measurementService.getMeasurementHistory(user._id);
@@ -147,5 +139,4 @@ const testMeasurementSystem = async () => {
   }
 };
 
-// Run tests
 testMeasurementSystem();

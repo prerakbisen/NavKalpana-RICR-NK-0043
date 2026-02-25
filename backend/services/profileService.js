@@ -3,13 +3,11 @@ import { calculateBMI, calculateBMR, getActivityFactor, calculateDailyCalorieTar
 import * as measurementService from './measurementService.js';
 
 export const createProfile = async (user_id, profileData) => {
-  // Check if profile already exists
   const existingProfile = await Profile.findOne({ user_id });
   if (existingProfile) {
     throw new Error('Profile already exists for this user');
   }
   
-  // Calculate derived fields
   const height_m = profileData.height_cm / 100;
   const bmi = calculateBMI(profileData.weight_kg, profileData.height_cm);
   const bmr = calculateBMR(profileData.weight_kg, profileData.height_cm, profileData.age, profileData.gender);
@@ -28,13 +26,11 @@ export const createProfile = async (user_id, profileData) => {
   
   await profile.save();
   
-  // Save initial measurements if provided
   if (profileData.initial_measurements) {
     try {
       await measurementService.saveInitialMeasurements(user_id, profileData.initial_measurements);
     } catch (error) {
       console.error('Failed to save initial measurements:', error);
-      // Don't fail profile creation if measurements fail
     }
   }
   

@@ -58,7 +58,7 @@ const profileSchema = new mongoose.Schema({
     max: 7,
     default: 4
   },
-  // Body Measurements (Optional - for tracking progress)
+  // Body Measurements 
   initial_measurements: {
     waist_cm: { type: Number, min: 0 },
     chest_cm: { type: Number, min: 0 },
@@ -87,7 +87,7 @@ const profileSchema = new mongoose.Schema({
     default: '',
     trim: true
   },
-  // Calculated fields
+ 
   bmi: Number,
   bmr: Number,
   daily_calorie_target: Number,
@@ -103,7 +103,7 @@ const profileSchema = new mongoose.Schema({
   }
 });
 
-// Update timestamp on save
+
 profileSchema.pre('save', function(next) {
   this.updated_at = Date.now();
   next();

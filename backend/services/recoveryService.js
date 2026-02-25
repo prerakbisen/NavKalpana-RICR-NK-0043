@@ -1,15 +1,10 @@
 import DailyLog from '../models/DailyLog.js';
 import WorkoutPlanV2 from '../models/WorkoutPlanV2.js';
 
-/**
- * Recovery Intelligence Service
- * Monitors energy levels and adjusts workouts based on fatigue patterns
- */
 
-// Check if user needs a recovery day based on recent fatigue
+
 export const checkRecoveryNeeded = async (userId) => {
   try {
-    // Get last 7 days of logs
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     
@@ -18,12 +13,10 @@ export const checkRecoveryNeeded = async (userId) => {
       date: { $gte: sevenDaysAgo }
     }).sort({ date: -1 });
 
-    // Count fatigue flags (Slightly Fatigued or Very Tired)
     const fatigueFlags = recentLogs.filter(log => 
       log.energy_level === 'Slightly Fatigued' || log.energy_level === 'Very Tired'
     ).length;
 
-    // Get today's energy level
     const today = new Date().toISOString().split('T')[0];
     const todayLog = recentLogs.find(log => 
       log.date.toISOString().split('T')[0] === today
@@ -41,7 +34,6 @@ export const checkRecoveryNeeded = async (userId) => {
   }
 };
 
-// Get workout adjustment based on energy level
 export const getWorkoutAdjustment = (energyLevel) => {
   const adjustments = {
     'Energized': {
@@ -75,7 +67,6 @@ export const getWorkoutAdjustment = (energyLevel) => {
   return adjustments[energyLevel] || adjustments['Normal'];
 };
 
-// Get recovery recommendation message
 const getRecoveryRecommendation = (fatigueCount, currentEnergy) => {
   if (fatigueCount >= 3) {
     return {
@@ -108,15 +99,13 @@ const getRecoveryRecommendation = (fatigueCount, currentEnergy) => {
   };
 };
 
-// Adjust workout plan based on recovery status
 export const adjustWorkoutForRecovery = async (userId, workoutPlan, recoveryStatus) => {
   if (!recoveryStatus.recovery_needed && !recoveryStatus.recommendation.should_adjust) {
-    return workoutPlan; // No adjustment needed
+    return workoutPlan; 
   }
 
   const adjustment = getWorkoutAdjustment(recoveryStatus.current_energy);
   
-  // If critical fatigue (3+ flags), force recovery day
   if (recoveryStatus.recovery_needed) {
     return {
       ...workoutPlan,
@@ -144,7 +133,6 @@ export const adjustWorkoutForRecovery = async (userId, workoutPlan, recoveryStat
     };
   }
 
-  // Adjust intensity/volume for current workout
   if (adjustment.should_adjust) {
     return {
       ...workoutPlan,
@@ -155,7 +143,6 @@ export const adjustWorkoutForRecovery = async (userId, workoutPlan, recoveryStat
       workouts: workoutPlan.workouts.map(day => {
         if (day.rest_day) return day;
         
-        // If very tired, swap to mobility
         if (adjustment.swap_to_mobility) {
           return {
             ...day,
@@ -182,7 +169,6 @@ export const adjustWorkoutForRecovery = async (userId, workoutPlan, recoveryStat
           };
         }
         
-        // Reduce sets and reps
         return {
           ...day,
           exercises: day.exercises.map(ex => ({
@@ -191,7 +177,7 @@ export const adjustWorkoutForRecovery = async (userId, workoutPlan, recoveryStat
             reps: typeof ex.reps === 'number' 
               ? Math.max(1, Math.round(ex.reps * adjustment.volume_multiplier))
               : ex.reps,
-            rest_seconds: ex.rest_seconds + 15 // Add extra rest
+            rest_seconds: ex.rest_seconds + 15 
           }))
         };
       })

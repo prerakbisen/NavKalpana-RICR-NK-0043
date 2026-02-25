@@ -44,5 +44,4 @@ const workoutPlanV2Schema = new mongoose.Schema({
   }
 });
 
-// Use a different collection name to avoid conflicts
 export default mongoose.model('WorkoutPlanV2', workoutPlanV2Schema, 'workoutplans');

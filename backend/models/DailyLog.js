@@ -10,7 +10,6 @@ const dailyLogSchema = new mongoose.Schema({
     type: Date,
     required: true
   },
-  // Enhanced workout tracking with status
   workout_completed: {
     type: Boolean,
     default: false
@@ -24,7 +23,6 @@ const dailyLogSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
-  // Enhanced diet tracking with adherence level
   diet_followed: {
     type: Boolean,
     default: false
@@ -71,10 +69,8 @@ const dailyLogSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Index for faster queries
 dailyLogSchema.index({ user_id: 1, date: -1 });
 
-// Ensure one log per user per day
 dailyLogSchema.index({ user_id: 1, date: 1 }, { unique: true });
 
 export default mongoose.model('DailyLog', dailyLogSchema);
