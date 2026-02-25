@@ -1,5 +1,48 @@
 import BodyMeasurement from '../models/BodyMeasurement.js';
 import Profile from '../models/Profile.js';
+import DietPlan from '../models/DietPlan.js';
+import WorkoutPlanV2 from '../models/WorkoutPlanV2.js';
+import Groq from 'groq-sdk';
+
+// Initialize Groq client
+const getGroqClient = () => {
+  const apiKey = process.env.GROQ_API_KEY || 
+                 process.env.GROQ_API_KEY_DIET ||
+                 process.env.GROQ_API_KEY_WORKOUT;
+  
+  if (!apiKey || apiKey.includes('your_groq')) {
+    console.warn('⚠️  Groq API key not configured');
+    return null;
+  }
+  
+  return new Groq({ apiKey });
+};
+
+// Call Groq API
+const callGroqAPI = async (prompt, context = 'measurement_analysis') => {
+  const client = getGroqClient();
+  if (!client) {
+    throw new Error('Groq API not configured');
+  }
+
+  const completion = await client.chat.completions.create({
+    messages: [
+      {
+        role: "system",
+        content: "You are an expert fitness coach analyzing body measurements. Provide detailed, actionable insights."
+      },
+      {
+        role: "user",
+        content: prompt
+      }
+    ],
+    model: "llama-3.1-8b-instant",
+    temperature: 0.7,
+    max_tokens: 1000
+  });
+
+  return completion.choices[0]?.message?.content || '';
+};
 
 export const saveInitialMeasurements = async (user_id, measurements) => {
   try {
@@ -8,12 +51,15 @@ export const saveInitialMeasurements = async (user_id, measurements) => {
       throw new Error('Profile not found');
     }
 
+    // Save to profile's initial_measurements with new field names
     profile.initial_measurements = {
       waist_cm: measurements.waist_cm || null,
       chest_cm: measurements.chest_cm || null,
       hips_cm: measurements.hips_cm || null,
-      arms_cm: measurements.arms_cm || null,
-      thighs_cm: measurements.thighs_cm || null,
+      left_arm_cm: measurements.left_arm_cm || null,
+      right_arm_cm: measurements.right_arm_cm || null,
+      left_thigh_cm: measurements.left_thigh_cm || null,
+      right_thigh_cm: measurements.right_thigh_cm || null,
       measured_at: new Date()
     };
     
@@ -28,10 +74,10 @@ export const saveInitialMeasurements = async (user_id, measurements) => {
         waist_cm: measurements.waist_cm || null,
         chest_cm: measurements.chest_cm || null,
         hips_cm: measurements.hips_cm || null,
-        left_arm_cm: measurements.arms_cm || null,
-        right_arm_cm: measurements.arms_cm || null,
-        left_thigh_cm: measurements.thighs_cm || null,
-        right_thigh_cm: measurements.thighs_cm || null
+        left_arm_cm: measurements.left_arm_cm || null,
+        right_arm_cm: measurements.right_arm_cm || null,
+        left_thigh_cm: measurements.left_thigh_cm || null,
+        right_thigh_cm: measurements.right_thigh_cm || null
       },
       notes: 'Initial measurements'
     });
@@ -91,25 +137,54 @@ export const checkMeasurementReminder = async (user_id) => {
   try {
     const profile = await Profile.findOne({ user_id });
     if (!profile) {
-      return { reminder_due: false };
+      console.log('⚠️ No profile found for user');
+      return { reminder_due: false, days_until_next: 28 };
     }
 
-    if (!profile.initial_measurements || !profile.initial_measurements.measured_at) {
-      return { reminder_due: false };
+    // Determine the last measurement date
+    let lastMeasurementDate = profile.last_measurement_reminder;
+    
+    // If no last_measurement_reminder, use initial_measurements.measured_at
+    if (!lastMeasurementDate && profile.initial_measurements?.measured_at) {
+      lastMeasurementDate = profile.initial_measurements.measured_at;
+    }
+    
+    // If still no date, return default
+    if (!lastMeasurementDate) {
+      console.log('⚠️ No measurement date found, returning default');
+      return { 
+        reminder_due: false, 
+        days_until_next: 28,
+        last_measurement_date: null,
+        next_due_date: null
+      };
     }
 
-    const lastReminder = profile.last_measurement_reminder || profile.initial_measurements.measured_at;
-    const fourWeeksAgo = new Date();
-    fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28); 
+    const MEASUREMENT_REMINDER_DAYS = 28; // 4 weeks
+    const daysSinceLastMeasurement = Math.floor(
+      (Date.now() - new Date(lastMeasurementDate)) / (1000 * 60 * 60 * 24)
+    );
+    const daysUntilNext = Math.max(0, MEASUREMENT_REMINDER_DAYS - daysSinceLastMeasurement);
+    const reminderDue = daysSinceLastMeasurement >= MEASUREMENT_REMINDER_DAYS;
+    
+    const nextDueDate = new Date(lastMeasurementDate);
+    nextDueDate.setDate(nextDueDate.getDate() + MEASUREMENT_REMINDER_DAYS);
 
-    const reminderDue = new Date(lastReminder) <= fourWeeksAgo;
+    console.log('📊 Measurement Reminder Check:', {
+      lastMeasurementDate,
+      daysSinceLastMeasurement,
+      daysUntilNext,
+      reminderDue
+    });
 
     return {
       reminder_due: reminderDue,
-      last_reminder_date: lastReminder,
-      days_since_last: Math.floor((new Date() - new Date(lastReminder)) / (1000 * 60 * 60 * 24))
+      days_until_next: daysUntilNext,
+      last_measurement_date: lastMeasurementDate,
+      next_due_date: nextDueDate
     };
   } catch (error) {
+    console.error('❌ Error checking measurement reminder:', error);
     throw new Error(`Failed to check measurement reminder: ${error.message}`);
   }
 };
@@ -242,4 +317,221 @@ export default {
   checkMeasurementReminder,
   compareMeasurements,
   getMeasurementHistory
+};
+
+
+// AI-Powered Measurement Analysis with Plan Adjustment
+export const analyzeMeasurementsWithAI = async (user_id) => {
+  try {
+    console.log(`🤖 Starting AI measurement analysis for user ${user_id}`);
+    
+    const profile = await Profile.findOne({ user_id });
+    if (!profile || !profile.initial_measurements) {
+      throw new Error('No initial measurements found');
+    }
+
+    const latestMeasurement = await getLatestMeasurement(user_id);
+    if (!latestMeasurement) {
+      throw new Error('No current measurements found');
+    }
+
+    const initial = profile.initial_measurements;
+    const current = latestMeasurement.measurements;
+
+    // Calculate all changes
+    const changes = {
+      waist: current.waist_cm - (initial.waist_cm || 0),
+      chest: current.chest_cm - (initial.chest_cm || 0),
+      hips: current.hips_cm - (initial.hips_cm || 0),
+      left_arm: current.left_arm_cm - (initial.left_arm_cm || 0),
+      right_arm: current.right_arm_cm - (initial.right_arm_cm || 0),
+      left_thigh: current.left_thigh_cm - (initial.left_thigh_cm || 0),
+      right_thigh: current.right_thigh_cm - (initial.right_thigh_cm || 0)
+    };
+
+    // Build AI prompt
+    const prompt = `Analyze these body measurement changes for a ${profile.age}-year-old ${profile.gender} with goal: ${profile.goal}
+
+INITIAL MEASUREMENTS (4 weeks ago):
+- Waist: ${initial.waist_cm}cm
+- Chest: ${initial.chest_cm}cm
+- Hips: ${initial.hips_cm}cm
+- Arms: ${initial.left_arm_cm}cm / ${initial.right_arm_cm}cm
+- Thighs: ${initial.left_thigh_cm}cm / ${initial.right_thigh_cm}cm
+
+CURRENT MEASUREMENTS:
+- Waist: ${current.waist_cm}cm (${changes.waist >= 0 ? '+' : ''}${changes.waist.toFixed(1)}cm)
+- Chest: ${current.chest_cm}cm (${changes.chest >= 0 ? '+' : ''}${changes.chest.toFixed(1)}cm)
+- Hips: ${current.hips_cm}cm (${changes.hips >= 0 ? '+' : ''}${changes.hips.toFixed(1)}cm)
+- Arms: ${current.left_arm_cm}cm / ${current.right_arm_cm}cm (${changes.left_arm >= 0 ? '+' : ''}${changes.left_arm.toFixed(1)}cm)
+- Thighs: ${current.left_thigh_cm}cm / ${current.right_thigh_cm}cm (${changes.left_thigh >= 0 ? '+' : ''}${changes.left_thigh.toFixed(1)}cm)
+
+USER PROFILE:
+- Goal: ${profile.goal}
+- Activity Level: ${profile.activity_level}
+- Fitness Level: ${profile.fitness_level}
+- Current Weight: ${profile.weight_kg}kg
+- Target Weight: ${profile.target_weight_kg}kg
+
+Provide a detailed analysis including:
+1. Overall progress assessment (excellent/good/moderate/poor)
+2. Specific insights about each measurement change
+3. Whether diet plan needs adjustment (yes/no with reason)
+4. Whether workout plan needs adjustment (yes/no with reason)
+5. Specific recommendations for next 4 weeks
+
+Format your response as:
+PROGRESS: [excellent/good/moderate/poor]
+INSIGHTS: [detailed analysis]
+DIET_ADJUSTMENT: [yes/no] - [reason]
+WORKOUT_ADJUSTMENT: [yes/no] - [reason]
+RECOMMENDATIONS: [specific actionable recommendations]`;
+
+    console.log('📤 Sending prompt to AI...');
+    const aiResponse = await callGroqAPI(prompt, 'measurement_analysis');
+    console.log('📥 AI response received');
+
+    // Parse AI response
+    const analysis = parseAIAnalysis(aiResponse, changes, profile.goal);
+    
+    // Determine if plans need regeneration
+    const needsDietAdjustment = analysis.diet_adjustment_needed;
+    const needsWorkoutAdjustment = analysis.workout_adjustment_needed;
+
+    console.log(`📊 Analysis complete - Diet adjustment: ${needsDietAdjustment}, Workout adjustment: ${needsWorkoutAdjustment}`);
+
+    return {
+      changes,
+      analysis,
+      needs_diet_adjustment: needsDietAdjustment,
+      needs_workout_adjustment: needsWorkoutAdjustment,
+      ai_response: aiResponse
+    };
+
+  } catch (error) {
+    console.error('❌ AI analysis error:', error);
+    
+    // Fallback to rule-based analysis
+    return await compareMeasurements(user_id);
+  }
+};
+
+// Parse AI response into structured format
+const parseAIAnalysis = (aiResponse, changes, goal) => {
+  const analysis = {
+    progress_level: 'moderate',
+    insights: [],
+    diet_adjustment_needed: false,
+    diet_adjustment_reason: '',
+    workout_adjustment_needed: false,
+    workout_adjustment_reason: '',
+    recommendations: [],
+    raw_response: aiResponse
+  };
+
+  try {
+    // Extract progress level
+    const progressMatch = aiResponse.match(/PROGRESS:\s*(excellent|good|moderate|poor)/i);
+    if (progressMatch) {
+      analysis.progress_level = progressMatch[1].toLowerCase();
+    }
+
+    // Extract insights
+    const insightsMatch = aiResponse.match(/INSIGHTS:\s*([^\n]+(?:\n(?!DIET_ADJUSTMENT|WORKOUT_ADJUSTMENT|RECOMMENDATIONS)[^\n]+)*)/i);
+    if (insightsMatch) {
+      analysis.insights = insightsMatch[1].trim().split('\n').filter(line => line.trim());
+    }
+
+    // Extract diet adjustment
+    const dietMatch = aiResponse.match(/DIET_ADJUSTMENT:\s*(yes|no)\s*-\s*([^\n]+)/i);
+    if (dietMatch) {
+      analysis.diet_adjustment_needed = dietMatch[1].toLowerCase() === 'yes';
+      analysis.diet_adjustment_reason = dietMatch[2].trim();
+    }
+
+    // Extract workout adjustment
+    const workoutMatch = aiResponse.match(/WORKOUT_ADJUSTMENT:\s*(yes|no)\s*-\s*([^\n]+)/i);
+    if (workoutMatch) {
+      analysis.workout_adjustment_needed = workoutMatch[1].toLowerCase() === 'yes';
+      analysis.workout_adjustment_reason = workoutMatch[2].trim();
+    }
+
+    // Extract recommendations
+    const recsMatch = aiResponse.match(/RECOMMENDATIONS:\s*([^\n]+(?:\n(?!$)[^\n]+)*)/i);
+    if (recsMatch) {
+      analysis.recommendations = recsMatch[1].trim().split('\n').filter(line => line.trim());
+    }
+
+    // Fallback logic if parsing fails
+    if (analysis.insights.length === 0) {
+      analysis.insights = [aiResponse.substring(0, 500)];
+    }
+
+  } catch (error) {
+    console.error('Error parsing AI response:', error);
+    analysis.insights = ['Analysis completed. Review your measurements for progress.'];
+  }
+
+  return analysis;
+};
+
+// Regenerate plans based on measurement analysis
+export const regeneratePlansBasedOnMeasurements = async (user_id, analysis) => {
+  try {
+    console.log(`🔄 Regenerating plans for user ${user_id}`);
+    
+    const results = {
+      diet_regenerated: false,
+      workout_regenerated: false,
+      messages: []
+    };
+
+    // Regenerate diet plan if needed
+    if (analysis.needs_diet_adjustment) {
+      try {
+        const latestDiet = await DietPlan.findOne({ user_id }).sort({ created_at: -1 });
+        const newWeekNumber = latestDiet ? latestDiet.week_number + 1 : 1;
+        
+        // Import diet service dynamically to avoid circular dependency
+        const { generateDietPlan } = await import('./dietService.js');
+        await generateDietPlan(user_id, newWeekNumber);
+        
+        results.diet_regenerated = true;
+        results.messages.push(`Diet plan regenerated (Week ${newWeekNumber}): ${analysis.analysis.diet_adjustment_reason}`);
+        console.log('✅ Diet plan regenerated');
+      } catch (error) {
+        console.error('❌ Failed to regenerate diet plan:', error);
+        results.messages.push('Failed to regenerate diet plan. Please generate manually.');
+      }
+    }
+
+    // Regenerate workout plan if needed
+    if (analysis.needs_workout_adjustment) {
+      try {
+        const latestWorkout = await WorkoutPlanV2.findOne({ user_id }).sort({ created_at: -1 });
+        const newWeekNumber = latestWorkout ? latestWorkout.week_number + 1 : 1;
+        
+        // Import workout service dynamically
+        const { generateWorkoutPlan } = await import('./workoutService.js');
+        await generateWorkoutPlan(user_id, newWeekNumber);
+        
+        results.workout_regenerated = true;
+        results.messages.push(`Workout plan regenerated (Week ${newWeekNumber}): ${analysis.analysis.workout_adjustment_reason}`);
+        console.log('✅ Workout plan regenerated');
+      } catch (error) {
+        console.error('❌ Failed to regenerate workout plan:', error);
+        results.messages.push('Failed to regenerate workout plan. Please generate manually.');
+      }
+    }
+
+    if (!results.diet_regenerated && !results.workout_regenerated) {
+      results.messages.push('No plan adjustments needed. Continue with current plans.');
+    }
+
+    return results;
+
+  } catch (error) {
+    console.error('❌ Error regenerating plans:', error);
+    throw error;
+  }
 };

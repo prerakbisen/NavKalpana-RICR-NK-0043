@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { workoutService, progressService, profileService, dailyLogService, measurementService } from '../services/apiService';
+import { workoutService, progressService, profileService, dailyLogService, measurementService, planAdjustmentService } from '../services/apiService';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { MeasurementModal } from '../components/MeasurementModal';
 
 export const DashboardPage = () => {
   const navigate = useNavigate();
@@ -18,6 +19,13 @@ export const DashboardPage = () => {
   const [activeView, setActiveView] = useState('dashboard');
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const [measurementReminder, setMeasurementReminder] = useState(null);
+  const [planEvaluation, setPlanEvaluation] = useState(null);
+  const [latestMeasurements, setLatestMeasurements] = useState(null);
+  const [goalProgress, setGoalProgress] = useState(null);
+  const [energyStatus, setEnergyStatus] = useState(null);
+  const [goalForecast, setGoalForecast] = useState(null);
+  const [measurementTrends, setMeasurementTrends] = useState(null);
+  const [showMeasurementModal, setShowMeasurementModal] = useState(false);
 
   useEffect(() => {
     const returningStatus = localStorage.getItem('isReturningUser');
@@ -29,34 +37,49 @@ export const DashboardPage = () => {
     navigate('/login');
   };
 
+  const fetchDashboardData = async () => {
+    try {
+      const [profileRes, workoutRes, habitRes, progressRes, dropoffRes, logsRes, reminderRes, evaluationRes, goalRes, energyRes, forecastRes, trendsRes, measurementsRes] = await Promise.all([
+        profileService.getProfile(),
+        workoutService.getLatestWorkout(),
+        progressService.getCurrentHabitScore(),
+        progressService.getRecentProgress(7),
+        progressService.checkDropoffRisk(),
+        dailyLogService.getRecentLogs(7),
+        measurementService.checkReminder().catch(() => ({ data: { reminder_due: false } })),
+        planAdjustmentService.getWeeklyEvaluation().catch(() => ({ data: { needs_adjustment: false } })),
+        progressService.getGoalProgress().catch(() => ({ data: null })),
+        progressService.getEnergyStatus().catch(() => ({ data: null })),
+        progressService.getGoalForecast().catch(() => ({ data: null })),
+        progressService.getMeasurementTrends().catch(() => ({ data: null })),
+        measurementService.getLatestMeasurement().catch(() => ({ data: null }))
+      ]);
+      
+      console.log('📊 Measurement Reminder Data:', reminderRes.data);
+      console.log('📏 Latest Measurements:', measurementsRes.data);
+      
+      setProfile(profileRes.data);
+      setWorkout(workoutRes.data);
+      setHabitScore(habitRes.data);
+      setProgress(progressRes.data.reverse());
+      setDropoffRisk(dropoffRes.data);
+      setRecentLogs(logsRes.data);
+      setMeasurementReminder(reminderRes.data);
+      setPlanEvaluation(evaluationRes.data);
+      setGoalProgress(goalRes.data);
+      setEnergyStatus(energyRes.data);
+      setGoalForecast(forecastRes.data);
+      setMeasurementTrends(trendsRes.data);
+      setLatestMeasurements(measurementsRes.data);
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [profileRes, workoutRes, habitRes, progressRes, dropoffRes, logsRes, reminderRes] = await Promise.all([
-          profileService.getProfile(),
-          workoutService.getLatestWorkout(),
-          progressService.getCurrentHabitScore(),
-          progressService.getRecentProgress(7),
-          progressService.checkDropoffRisk(),
-          dailyLogService.getRecentLogs(7),
-          measurementService.checkReminder().catch(() => ({ data: { reminder_due: false } }))
-        ]);
-        
-        setProfile(profileRes.data);
-        setWorkout(workoutRes.data);
-        setHabitScore(habitRes.data);
-        setProgress(progressRes.data.reverse());
-        setDropoffRisk(dropoffRes.data);
-        setRecentLogs(logsRes.data);
-        setMeasurementReminder(reminderRes.data);
-      } catch (err) {
-        console.error('Error fetching dashboard data:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchData();
+    fetchDashboardData();
   }, []);
 
   if (loading) return (
@@ -219,6 +242,65 @@ export const DashboardPage = () => {
     adherenceByWeek[weekNum].diet_score += dietScore;
   });
 
+  // Calculate goal timeline
+  const calculateGoalTimeline = () => {
+    if (!profile) return null;
+    
+    const currentWeight = profile.weight_kg;
+    const targetWeight = profile.target_weight_kg;
+    const weightDiff = Math.abs(targetWeight - currentWeight);
+    
+    // Safe rates per week
+    const safeRates = {
+      'Weight Loss': { min: 0.5, max: 1.0 },
+      'Muscle Gain': { min: 0.25, max: 0.5 },
+      'Maintenance': { min: 0, max: 0 }
+    };
+    
+    const rate = safeRates[profile.goal] || safeRates['Maintenance'];
+    
+    if (profile.goal === 'Maintenance' || weightDiff < 0.5) {
+      return {
+        weeks: 0,
+        months: 0,
+        display: 'Ongoing'
+      };
+    }
+    
+    // Calculate using average of min and max safe rate
+    const avgRate = (rate.min + rate.max) / 2;
+    const weeks = Math.ceil(weightDiff / avgRate);
+    const months = Math.round(weeks / 4.33);
+    
+    return {
+      weeks,
+      months,
+      display: months > 0 ? `${months} month${months > 1 ? 's' : ''}` : `${weeks} weeks`
+    };
+  };
+
+  const goalTimeline = calculateGoalTimeline();
+  const goalIcons = {
+    'Weight Loss': '🎯',
+    'Muscle Gain': '💪',
+    'Maintenance': '⚖️'
+  };
+  const goalColors = {
+    'Weight Loss': 'from-rose-500 to-pink-600',
+    'Muscle Gain': 'from-blue-500 to-indigo-600',
+    'Maintenance': 'from-green-500 to-emerald-600'
+  };
+
+
+
+
+
+
+
+
+
+
+
   const adherenceData = Object.values(adherenceByWeek)
     .map(week => ({
       week: `W${week.week_number}`,
@@ -293,6 +375,22 @@ export const DashboardPage = () => {
           >
             <span className="text-xl">🤖</span>
             <span className="font-semibold">AI Coach</span>
+          </button>
+          
+          <button
+            onClick={() => navigate('/premium')}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:shadow-lg transition-all"
+          >
+            <span className="text-xl">💎</span>
+            <span className="font-semibold">Premium</span>
+          </button>
+          
+          <button
+            onClick={() => navigate('/reports')}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-700 transition-all"
+          >
+            <span className="text-xl">📊</span>
+            <span className="font-semibold">Reports</span>
           </button>
         </nav>
 
@@ -376,11 +474,76 @@ export const DashboardPage = () => {
           </div>
         )}
 
-        
-        <div className="grid grid-cols-4 gap-6">
-          
+        {/* Plan Adjustment Notification */}
+        {planEvaluation?.needs_adjustment && (
+          <div className="mb-6 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl p-6 text-white shadow-xl animate-slide-down">
+            <div className="flex items-start gap-4">
+              <div className="text-5xl animate-bounce-subtle">🎯</div>
+              <div className="flex-1">
+                <h3 className="text-xl font-bold mb-2">Smart Plan Adjustment Recommended</h3>
+                <p className="text-sm opacity-90 mb-3">
+                  Based on your weekly progress, we've identified some adjustments to optimize your results.
+                </p>
+                
+                {/* Show triggers */}
+                <div className="mb-3 space-y-2">
+                  {planEvaluation.triggers?.map((trigger, idx) => (
+                    <div key={idx} className="flex items-center gap-2 text-sm bg-white bg-opacity-20 rounded-lg p-2">
+                      <span>{trigger.severity === 'high' ? '⚠️' : '📊'}</span>
+                      <span>{trigger.message}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Show recommendations */}
+                <div className="mb-3 space-y-1">
+                  {planEvaluation.recommendations?.slice(0, 2).map((rec, idx) => (
+                    <div key={idx} className="text-xs opacity-90">
+                      • {rec.description}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={async () => {
+                      try {
+                        const res = await planAdjustmentService.triggerAutoAdjustment();
+                        if (res.data.adjusted) {
+                          alert('Plans adjusted successfully! Check your Workout and Diet pages.');
+                          setPlanEvaluation({ ...planEvaluation, needs_adjustment: false });
+                        }
+                      } catch (err) {
+                        alert('Failed to adjust plans. Please try again.');
+                      }
+                    }}
+                    className="px-6 py-2 bg-white text-blue-600 rounded-lg font-semibold hover:bg-gray-100 transition-all"
+                  >
+                    Apply Adjustments
+                  </button>
+                  <button
+                    onClick={() => setPlanEvaluation({ ...planEvaluation, needs_adjustment: false })}
+                    className="px-6 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg font-semibold transition-all"
+                  >
+                    Remind Me Later
+                  </button>
+                </div>
+              </div>
+              <button
+                onClick={() => setPlanEvaluation({ ...planEvaluation, needs_adjustment: false })}
+                className="text-white hover:bg-white hover:bg-opacity-20 rounded-lg p-2 transition-all"
+              >
+                <span className="text-xl">✕</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Main Grid - Balanced 2 Column Layout */}
+        <div className="grid grid-cols-2 gap-6">
+          {/* Left Section - 5 Cards */}
           <div className="space-y-6">
-            
+            {/* Daily Motivation Card */}
             <div className={`bg-gradient-to-br ${dailyMotivation.color} rounded-3xl p-6 text-white shadow-xl transform hover:scale-105 transition-all duration-300`}>
               <div className="flex items-start gap-4 mb-4">
                 <div className="text-5xl animate-bounce-subtle">{dailyMotivation.icon}</div>
@@ -499,11 +662,8 @@ export const DashboardPage = () => {
                 ))}
               </div>
             </div>
-          </div>
 
-          
-          <div className="col-span-2 space-y-6">
-            
+            {/* Today's Workout Card */}
             <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
               <div className="relative z-10">
                 
@@ -839,9 +999,324 @@ export const DashboardPage = () => {
             </div>
           </div>
 
-          
+          {/* Right Section - 5 Cards (Goal-Focused Features) */}
           <div className="space-y-6">
-            
+            {/* Active Goal Card */}
+            <div className="bg-gradient-to-br from-rose-500 to-pink-600 rounded-3xl p-6 text-white shadow-xl">
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold">Active Goal</h3>
+                  <p className="text-xs text-white opacity-75 mt-1">{goalProgress?.goal_timeframe || profile?.goal_timeframe || '12 weeks'}</p>
+                </div>
+                <button 
+                  onClick={() => navigate('/profile')}
+                  className="p-2 bg-white bg-opacity-20 rounded-lg hover:bg-opacity-30 transition-all"
+                >
+                  <span className="text-xl">⚙️</span>
+                </button>
+              </div>
+
+              {/* Goal Type with Icon */}
+              <div className="mb-4">
+                <div className="text-5xl mb-2">
+                  {goalProgress?.goal_type === 'Weight Loss' ? '⬇️' : 
+                   goalProgress?.goal_type === 'Muscle Gain' ? '💪' : 
+                   goalProgress?.goal_type === 'Recomposition' ? '🔄' : '⚖️'}
+                </div>
+                <div className="text-2xl font-bold">{goalProgress?.goal_type || profile?.goal}</div>
+              </div>
+
+              {/* Weight Progress */}
+              <div className="bg-white bg-opacity-20 rounded-xl p-4 mb-4 backdrop-blur-sm">
+                <div className="flex justify-between items-center mb-3">
+                  <span className="text-sm opacity-90">Weight Progress</span>
+                  <span className="font-bold">{goalProgress?.current_weight || profile?.weight_kg} → {goalProgress?.target_weight || profile?.target_weight_kg} kg</span>
+                </div>
+                
+                {/* Progress Bar */}
+                <div className="w-full bg-white bg-opacity-20 rounded-full h-3 mb-2">
+                  <div 
+                    className="bg-white rounded-full h-3 transition-all duration-500"
+                    style={{
+                      width: `${goalProgress?.progress_percentage || 0}%`
+                    }}
+                  ></div>
+                </div>
+                
+                <div className="flex justify-between items-center text-xs opacity-90">
+                  <span>
+                    {Math.abs(goalProgress?.remaining_distance || 0).toFixed(1)} kg to go
+                  </span>
+                  <span className="font-semibold">
+                    {goalProgress?.progress_percentage || 0}% Complete
+                  </span>
+                </div>
+              </div>
+
+              {/* Target Timeline & Stats */}
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="bg-white bg-opacity-10 rounded-lg p-2 text-center">
+                  <div className="text-xs opacity-75">Target Time</div>
+                  <div className="font-bold">{goalProgress?.goal_timeframe || profile?.goal_timeframe || '12 weeks'}</div>
+                </div>
+                <div className="bg-white bg-opacity-10 rounded-lg p-2 text-center">
+                  <div className="text-xs opacity-75">Current Weight</div>
+                  <div className="font-bold">{goalProgress?.current_weight || profile?.weight_kg} kg</div>
+                </div>
+              </div>
+
+              {/* Weight Change Indicator */}
+              {goalProgress?.total_weight_change !== undefined && (
+                <div className="mt-3 pt-3 border-t border-white border-opacity-30 text-xs opacity-90">
+                  <div className="flex justify-between items-center">
+                    <span>Total Change:</span>
+                    <span className={`font-bold ${goalProgress?.total_weight_change !== 0 ? 'text-yellow-200' : 'text-white'}`}>
+                      {goalProgress?.total_weight_change > 0 ? '+' : ''}{goalProgress?.total_weight_change} kg
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Energy Status Card */}
+            <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-3xl p-6 text-white shadow-xl">
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold">Energy Status</h3>
+                  <p className="text-xs text-white opacity-75 mt-1">{energyStatus?.trend || 'No data'}</p>
+                </div>
+                <button 
+                  onClick={() => navigate('/daily-log')}
+                  className="p-2 bg-white bg-opacity-20 rounded-lg hover:bg-opacity-30 transition-all"
+                  title="Update daily energy log"
+                >
+                  <span className="text-xl">📝</span>
+                </button>
+              </div>
+
+              <div className="flex items-center justify-center mb-4">
+                <div className="text-6xl">{energyStatus?.status_icon || '😴'}</div>
+              </div>
+
+              <div className="bg-white bg-opacity-20 rounded-xl p-4 mb-4 backdrop-blur-sm">
+                <div className="text-center mb-2">
+                  <div className="text-2xl font-bold">{energyStatus?.current_energy || 'N/A'}</div>
+                  <div className="text-xs opacity-90 mt-1">
+                    {energyStatus?.current_date 
+                      ? new Date(energyStatus.current_date).toLocaleDateString() 
+                      : 'No recent log'}
+                  </div>
+                  {energyStatus?.current_mood && (
+                    <div className="text-xs opacity-75 mt-1">Mood: {energyStatus.current_mood}</div>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="bg-white bg-opacity-10 rounded-lg p-2 text-center">
+                  <div className="text-xs opacity-75">Week Avg</div>
+                  <div className="font-bold">{(energyStatus?.weekly_average || 0).toFixed(1)}/4</div>
+                  <div className="text-xs opacity-75">energy</div>
+                </div>
+                <div className="bg-white bg-opacity-10 rounded-lg p-2 text-center">
+                  <div className="text-xs opacity-75">Sleep</div>
+                  <div className="font-bold">{(energyStatus?.avg_sleep || 0).toFixed(1)}h</div>
+                  <div className="text-xs opacity-75">per night</div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 text-sm mt-3">
+                <div className="bg-white bg-opacity-10 rounded-lg p-2 text-center">
+                  <div className="text-xs opacity-75">Logs</div>
+                  <div className="font-bold">{energyStatus?.logs_this_week || 0}/7</div>
+                </div>
+                <div className="bg-white bg-opacity-10 rounded-lg p-2 text-center">
+                  <div className="text-xs opacity-75">Mood</div>
+                  <div className="font-bold">{(energyStatus?.avg_mood || 0).toFixed(1)}/5</div>
+                </div>
+              </div>
+
+              {energyStatus?.recommendation && (
+                <div className="mt-3 pt-3 border-t border-white border-opacity-30 text-xs opacity-90">
+                  <p className="text-center italic">{energyStatus.recommendation}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Goal Forecast Card */}
+            <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-3xl p-6 text-white shadow-xl">
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold">Goal Forecast</h3>
+                  <p className="text-xs text-white opacity-75 mt-1">{goalForecast?.confidence || 'Calculating...'}</p>
+                </div>
+                <button 
+                  onClick={() => navigate('/progress')}
+                  className="p-2 bg-white bg-opacity-20 rounded-lg hover:bg-opacity-30 transition-all"
+                >
+                  <span className="text-xl">📊</span>
+                </button>
+              </div>
+
+              <div className="mb-4">
+                <div className="text-5xl mb-2">
+                  {goalForecast?.estimated_weeks ? (
+                    goalForecast.estimated_weeks <= 4 ? '🎉' : 
+                    goalForecast.estimated_weeks <= 12 ? '💪' : '⏳'
+                  ) : '📅'}
+                </div>
+              </div>
+
+              <div className="bg-white bg-opacity-20 rounded-xl p-4 mb-4 backdrop-blur-sm">
+                <div className="text-center mb-2">
+                  {goalForecast?.estimated_completion ? (
+                    <>
+                      <div className="text-sm opacity-90">Estimated Completion</div>
+                      <div className="text-2xl font-bold">{new Date(goalForecast.estimated_completion).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}</div>
+                      <div className="text-xs opacity-75 mt-1">~{goalForecast?.estimated_weeks} weeks</div>
+                    </>
+                  ) : (
+                    <div className="text-xs opacity-90">{goalForecast?.message || 'Log more weights to forecast'}</div>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="bg-white bg-opacity-10 rounded-lg p-2 text-center">
+                  <div className="opacity-75">Weekly Change</div>
+                  <div className="font-bold mt-1">{goalForecast?.weekly_change ? (goalForecast.weekly_change > 0 ? '+' : '') + goalForecast.weekly_change : 'N/A'} kg</div>
+                </div>
+                <div className="bg-white bg-opacity-10 rounded-lg p-2 text-center">
+                  <div className="opacity-75">Remaining</div>
+                  <div className="font-bold mt-1">{Math.abs(goalForecast?.remaining_distance || 0).toFixed(1)} kg</div>
+                </div>
+              </div>
+
+              {goalForecast?.message && (
+                <div className="mt-3 pt-3 border-t border-white border-opacity-30 text-xs opacity-90">
+                  <p className="text-center italic">{goalForecast.message}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Measurement Trends Card */}
+            <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-3xl p-6 text-white shadow-xl">
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold">Measurements</h3>
+                  <p className="text-xs text-white opacity-75 mt-1">{measurementTrends?.overall_assessment || 'Tracking...'}</p>
+                </div>
+                <button 
+                  onClick={() => navigate('/profile')}
+                  className="p-2 bg-white bg-opacity-20 rounded-lg hover:bg-opacity-30 transition-all"
+                  title="Update measurements"
+                >
+                  <span className="text-xl">📏</span>
+                </button>
+              </div>
+
+              {measurementTrends?.has_data ? (
+                <>
+                  <div className="mb-4">
+                    <div className="text-5xl mb-2">
+                      {measurementTrends.overall_assessment === 'Excellent' ? '🎯' :
+                       measurementTrends.overall_assessment === 'Good Progress' ? '👍' : 
+                       measurementTrends.overall_assessment === 'On Track' ? '✅' : '⚙️'}
+                    </div>
+                  </div>
+
+                  <div className="bg-white bg-opacity-20 rounded-xl p-4 mb-4 backdrop-blur-sm">
+                    <div className="space-y-2 text-sm">
+                      {measurementTrends.measurements?.waist && (
+                        <div className="flex justify-between items-center">
+                          <span>📍 Waist:</span>
+                          <div className="text-right">
+                            <div className="font-bold">{measurementTrends.measurements.waist.initial} → {measurementTrends.measurements.waist.current} cm</div>
+                            <div className={`text-xs ${measurementTrends.measurements.waist.change < 0 ? 'text-yellow-200' : measurementTrends.measurements.waist.change > 0 ? 'text-orange-200' : 'text-green-200'}`}>
+                              {measurementTrends.measurements.waist.change > 0 ? '+' : ''}{measurementTrends.measurements.waist.change} cm
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      {measurementTrends.measurements?.chest && (
+                        <div className="flex justify-between items-center">
+                          <span>💪 Chest:</span>
+                          <div className="text-right">
+                            <div className="font-bold">{measurementTrends.measurements.chest.initial} → {measurementTrends.measurements.chest.current} cm</div>
+                            <div className={`text-xs ${measurementTrends.measurements.chest.change > 0 ? 'text-green-200' : measurementTrends.measurements.chest.change < 0 ? 'text-orange-200' : 'text-gray-200'}`}>
+                              {measurementTrends.measurements.chest.change > 0 ? '+' : ''}{measurementTrends.measurements.chest.change} cm
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      {measurementTrends.measurements?.hips && (
+                        <div className="flex justify-between items-center">
+                          <span>⭕ Hips:</span>
+                          <div className="text-right">
+                            <div className="font-bold">{measurementTrends.measurements.hips.initial} → {measurementTrends.measurements.hips.current} cm</div>
+                            <div className={`text-xs ${measurementTrends.measurements.hips.change < 0 ? 'text-yellow-200' : measurementTrends.measurements.hips.change > 0 ? 'text-orange-200' : 'text-green-200'}`}>
+                              {measurementTrends.measurements.hips.change > 0 ? '+' : ''}{measurementTrends.measurements.hips.change} cm
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      {measurementTrends.measurements?.arms && (
+                        <div className="flex justify-between items-center">
+                          <span>💪 Arms:</span>
+                          <div className="text-right">
+                            <div className="font-bold">{measurementTrends.measurements.arms.initial} → {measurementTrends.measurements.arms.current} cm</div>
+                            <div className={`text-xs ${measurementTrends.measurements.arms.change > 0 ? 'text-green-200' : measurementTrends.measurements.arms.change < 0 ? 'text-orange-200' : 'text-gray-200'}`}>
+                              {measurementTrends.measurements.arms.change > 0 ? '+' : ''}{measurementTrends.measurements.arms.change} cm
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      {measurementTrends.measurements?.thighs && (
+                        <div className="flex justify-between items-center">
+                          <span>🦵 Thighs:</span>
+                          <div className="text-right">
+                            <div className="font-bold">{measurementTrends.measurements.thighs.initial} → {measurementTrends.measurements.thighs.current} cm</div>
+                            <div className={`text-xs ${measurementTrends.measurements.thighs.change > 0 ? 'text-green-200' : measurementTrends.measurements.thighs.change < 0 ? 'text-orange-200' : 'text-gray-200'}`}>
+                              {measurementTrends.measurements.thighs.change > 0 ? '+' : ''}{measurementTrends.measurements.thighs.change} cm
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div className="bg-white bg-opacity-10 rounded-lg p-2 text-center">
+                      <div className="opacity-75">Entries</div>
+                      <div className="font-bold mt-1">{measurementTrends.total_entries}</div>
+                    </div>
+                    <div className="bg-white bg-opacity-10 rounded-lg p-2 text-center">
+                      <div className="opacity-75">Days Tracked</div>
+                      <div className="font-bold mt-1">{measurementTrends.days_tracked || 0}d</div>
+                    </div>
+                  </div>
+
+                  {measurementTrends.recommendations?.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-white border-opacity-30 text-xs opacity-90">
+                      <p className="text-center italic">💡 {measurementTrends.recommendations[0]}</p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-center py-6">
+                  <div className="text-4xl mb-2">📏</div>
+                  <p className="text-sm opacity-90">{measurementTrends?.message || 'Add measurements to track trends'}</p>
+                  <button
+                    onClick={() => navigate('/profile')}
+                    className="mt-3 px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg text-xs font-semibold transition-all"
+                  >
+                    Update Measurements
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* AI Coach Insights - REAL DATA FROM DROPOFF RISK */}
             <div className="bg-gradient-to-br from-teal-500 to-teal-600 rounded-3xl p-6 text-white shadow-xl">
               <div className="flex items-start justify-between mb-4">
                 <h3 className="text-lg font-semibold">AI Coach Insights</h3>
@@ -926,7 +1401,215 @@ export const DashboardPage = () => {
               </button>
             </div>
 
-            
+            {/* Measurement Reminder Countdown - STANDALONE CARD */}
+            {measurementReminder && (
+              <div className={`rounded-3xl p-6 shadow-xl ${
+                measurementReminder.reminder_due 
+                  ? 'bg-gradient-to-br from-red-50 to-orange-50 border-2 border-red-300' 
+                  : 'bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-300'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-3xl">{measurementReminder.reminder_due ? '⏰' : '📏'}</span>
+                      <h3 className="text-xl font-bold text-gray-900">
+                        {measurementReminder.reminder_due ? 'Measurement Update Due!' : 'Next Measurement Update'}
+                      </h3>
+                    </div>
+                    <p className="text-gray-600 text-sm mb-3">
+                      {measurementReminder.reminder_due 
+                        ? 'It\'s been 4 weeks since your last measurement. Time to track your progress!' 
+                        : `Your next measurement update is in ${measurementReminder.days_until_next} days`
+                      }
+                    </p>
+                    {measurementReminder.next_due_date && (
+                      <p className="text-xs text-gray-500">
+                        Next update: {new Date(measurementReminder.next_due_date).toLocaleDateString('en-US', { 
+                          weekday: 'long', 
+                          month: 'long', 
+                          day: 'numeric', 
+                          year: 'numeric' 
+                        })}
+                      </p>
+                    )}
+                  </div>
+                  <div className="text-center">
+                    <div className={`text-6xl font-bold mb-2 ${
+                      measurementReminder.reminder_due ? 'text-red-600 animate-pulse' : 'text-blue-600'
+                    }`}>
+                      {measurementReminder.days_until_next}
+                    </div>
+                    <div className="text-sm font-semibold text-gray-600">
+                      {measurementReminder.days_until_next === 1 ? 'day' : 'days'}
+                    </div>
+                  </div>
+                </div>
+                {measurementReminder.reminder_due && (
+                  <button
+                    onClick={() => setShowMeasurementModal(true)}
+                    className="mt-4 w-full bg-gradient-to-r from-red-500 to-orange-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                  >
+                    <span className="text-xl">📏</span>
+                    Update Measurements Now
+                    <span className="text-xl">→</span>
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Body Measurements Card */}
+            {(latestMeasurements || profile?.initial_measurements) && (
+              <div className="bg-white rounded-3xl p-6 shadow-xl">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <span className="text-2xl">📏</span>
+                    Body Measurements
+                  </h3>
+                  <button
+                    onClick={() => setShowMeasurementModal(true)}
+                    className="text-xs text-violet-600 hover:text-violet-700 font-semibold flex items-center gap-1"
+                  >
+                    Update
+                    <span>→</span>
+                  </button>
+                </div>
+                
+                <div className="flex items-center justify-between mb-4">
+                  <div className="text-xs text-gray-500">
+                    Last updated: {latestMeasurements?.date 
+                      ? new Date(latestMeasurements.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                      : profile?.initial_measurements?.measured_at 
+                        ? new Date(profile.initial_measurements.measured_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                        : 'Never'
+                    }
+                  </div>
+                  
+                  {/* Countdown Timer */}
+                  {measurementReminder && (
+                    <div className={`text-xs font-semibold px-3 py-1 rounded-full ${
+                      measurementReminder.reminder_due 
+                        ? 'bg-red-100 text-red-700 animate-pulse' 
+                        : 'bg-blue-100 text-blue-700'
+                    }`}>
+                      {measurementReminder.reminder_due 
+                        ? '⏰ Update Due!' 
+                        : `⏳ ${measurementReminder.days_until_next} days until next update`
+                      }
+                    </div>
+                  )}
+                </div>
+                
+                {/* Prominent Update Button when due */}
+                {measurementReminder && measurementReminder.reminder_due && (
+                  <div className="mb-4">
+                    <button
+                      onClick={() => setShowMeasurementModal(true)}
+                      className="w-full bg-gradient-to-r from-violet-600 to-purple-600 text-white py-3 rounded-xl font-semibold hover:from-violet-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+                    >
+                      <span className="text-xl">📏</span>
+                      Update Measurements Now
+                      <span className="text-xl">→</span>
+                    </button>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Use latestMeasurements if available, otherwise use initial_measurements */}
+                  {(() => {
+                    const measurements = latestMeasurements?.measurements || profile?.initial_measurements || {};
+                    return (
+                      <>
+                        {measurements.waist_cm && (
+                          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-3">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-lg">⭕</span>
+                              <span className="text-xs text-gray-600 font-semibold">Waist</span>
+                            </div>
+                            <div className="text-2xl font-bold text-blue-700">{measurements.waist_cm}</div>
+                            <div className="text-xs text-gray-500">cm</div>
+                          </div>
+                        )}
+                        
+                        {measurements.chest_cm && (
+                          <div className="bg-gradient-to-br from-purple-50 to-violet-50 border border-purple-200 rounded-xl p-3">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-lg">💪</span>
+                              <span className="text-xs text-gray-600 font-semibold">Chest</span>
+                            </div>
+                            <div className="text-2xl font-bold text-purple-700">{measurements.chest_cm}</div>
+                            <div className="text-xs text-gray-500">cm</div>
+                          </div>
+                        )}
+                        
+                        {measurements.hips_cm && (
+                          <div className="bg-gradient-to-br from-pink-50 to-rose-50 border border-pink-200 rounded-xl p-3">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-lg">🔄</span>
+                              <span className="text-xs text-gray-600 font-semibold">Hips</span>
+                            </div>
+                            <div className="text-2xl font-bold text-pink-700">{measurements.hips_cm}</div>
+                            <div className="text-xs text-gray-500">cm</div>
+                          </div>
+                        )}
+                        
+                        {measurements.left_arm_cm && (
+                          <div className="bg-gradient-to-br from-teal-50 to-cyan-50 border border-teal-200 rounded-xl p-3">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-lg">💪</span>
+                              <span className="text-xs text-gray-600 font-semibold">Left Arm</span>
+                            </div>
+                            <div className="text-2xl font-bold text-teal-700">{measurements.left_arm_cm}</div>
+                            <div className="text-xs text-gray-500">cm</div>
+                          </div>
+                        )}
+                        
+                        {measurements.right_arm_cm && (
+                          <div className="bg-gradient-to-br from-teal-50 to-cyan-50 border border-teal-200 rounded-xl p-3">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-lg">💪</span>
+                              <span className="text-xs text-gray-600 font-semibold">Right Arm</span>
+                            </div>
+                            <div className="text-2xl font-bold text-teal-700">{measurements.right_arm_cm}</div>
+                            <div className="text-xs text-gray-500">cm</div>
+                          </div>
+                        )}
+                        
+                        {measurements.left_thigh_cm && (
+                          <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-3">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-lg">🦵</span>
+                              <span className="text-xs text-gray-600 font-semibold">Left Thigh</span>
+                            </div>
+                            <div className="text-2xl font-bold text-amber-700">{measurements.left_thigh_cm}</div>
+                            <div className="text-xs text-gray-500">cm</div>
+                          </div>
+                        )}
+                        
+                        {measurements.right_thigh_cm && (
+                          <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-3">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-lg">🦵</span>
+                              <span className="text-xs text-gray-600 font-semibold">Right Thigh</span>
+                            </div>
+                            <div className="text-2xl font-bold text-amber-700">{measurements.right_thigh_cm}</div>
+                            <div className="text-xs text-gray-500">cm</div>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+
+                {latestMeasurements?.notes && (
+                  <div className="mt-4 p-3 bg-gray-50 rounded-xl">
+                    <div className="text-xs text-gray-600 font-semibold mb-1">Notes</div>
+                    <div className="text-sm text-gray-700">{latestMeasurements.notes}</div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Quick Stats */}
             <div className="bg-white rounded-3xl p-6 shadow-xl">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">This Week</h3>
               
@@ -974,6 +1657,14 @@ export const DashboardPage = () => {
           </div>
         </div>
       </div>
+      
+      {/* Measurement Modal */}
+      <MeasurementModal
+        isOpen={showMeasurementModal}
+        onClose={() => setShowMeasurementModal(false)}
+        reminderData={measurementReminder}
+        onMeasurementAdded={fetchDashboardData}
+      />
     </div>
   );
 };

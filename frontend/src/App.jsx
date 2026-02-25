@@ -19,6 +19,8 @@ import DietPage from './pages/DietPage';
 import ProgressPage from './pages/ProgressPage';
 import AssistantPage from './pages/AssistantPage';
 import DailyLogPage from './pages/DailyLogPage';
+import PremiumPage from './pages/PremiumPage';
+import ReportsPage from './pages/ReportsPage';
 
 const ProtectedRoute = ({ element }) => {
   const { token } = useAuth();
@@ -99,6 +101,8 @@ function App() {
           <Route path="/progress" element={<ProtectedRoute element={<ProgressPage />} />} />
           <Route path="/daily-log" element={<ProtectedRoute element={<DailyLogPage />} />} />
           <Route path="/assistant" element={<ProtectedRoute element={<AssistantPage />} />} />
+          <Route path="/premium" element={<ProtectedRoute element={<PremiumPage />} />} />
+          <Route path="/reports" element={<ProtectedRoute element={<ReportsPage />} />} />
         </Routes>
         <Footer />
       </AuthProvider>

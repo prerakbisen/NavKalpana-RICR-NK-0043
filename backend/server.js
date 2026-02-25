@@ -15,6 +15,10 @@ import exerciseLogRoutes from './routes/exerciseLogRoutes.js';
 import dailyLogRoutes from './routes/dailyLogRoutes.js';
 import measurementRoutes from './routes/measurementRoutes.js';
 import recoveryRoutes from './routes/recoveryRoutes.js';
+import planAdjustmentRoutes from './routes/planAdjustmentRoutes.js';
+import apiStatsRoutes from './routes/apiStatsRoutes.js';
+import premiumCoachingRoutes from './routes/premiumCoaching.js';
+import reportingRoutes from './routes/reportingRoutes.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -40,6 +44,10 @@ app.use('/api/exercises', exerciseLogRoutes);
 app.use('/api/daily', dailyLogRoutes);
 app.use('/api/measurements', measurementRoutes);
 app.use('/api/recovery', recoveryRoutes);
+app.use('/api/plan-adjustment', planAdjustmentRoutes);
+app.use('/api/api-stats', apiStatsRoutes);
+app.use('/api/premium', premiumCoachingRoutes);
+app.use('/api/reports', reportingRoutes);
 
 app.use((err, req, res, next) => {
   console.error(err.stack);

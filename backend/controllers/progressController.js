@@ -138,3 +138,43 @@ export const forecastGoal = async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 };
+
+// Get goal progress with real-time data
+export const getGoalProgress = async (req, res) => {
+  try {
+    const goalProgress = await progressService.getGoalProgress(req.user_id);
+    res.status(200).json(goalProgress);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+// Get energy status
+export const getEnergyStatus = async (req, res) => {
+  try {
+    const energyStatus = await progressService.getEnergyStatus(req.user_id);
+    res.status(200).json(energyStatus);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+// Get goal forecast with estimated completion date
+export const getGoalForecast = async (req, res) => {
+  try {
+    const forecast = await progressService.getGoalForecast(req.user_id);
+    res.status(200).json(forecast);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+// Get measurement trends
+export const getMeasurementTrends = async (req, res) => {
+  try {
+    const trends = await progressService.getMeasurementTrends(req.user_id);
+    res.status(200).json(trends);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};

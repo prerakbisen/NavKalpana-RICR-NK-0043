@@ -22,8 +22,10 @@ export const ProfileSetupPage = () => {
       waist_cm: '',
       chest_cm: '',
       hips_cm: '',
-      arms_cm: '',
-      thighs_cm: ''
+      left_arm_cm: '',
+      right_arm_cm: '',
+      left_thigh_cm: '',
+      right_thigh_cm: ''
     }
   });
   const [showMeasurements, setShowMeasurements] = useState(false);
@@ -87,14 +89,28 @@ export const ProfileSetupPage = () => {
     e.preventDefault();
     setLoading(true);
     
+    // Validate all measurements are filled (now required)
+    const { waist_cm, chest_cm, hips_cm, left_arm_cm, right_arm_cm, left_thigh_cm, right_thigh_cm } = formData.initial_measurements;
+    
+    if (!waist_cm || !chest_cm || !hips_cm || !left_arm_cm || !right_arm_cm || !left_thigh_cm || !right_thigh_cm) {
+      toast.error('All body measurements are required. Please fill in all fields.');
+      setLoading(false);
+      return;
+    }
+    
     const loadingToast = toast.loading('Setting up your profile...');
     try {
-      // Clean up measurements - only send if at least one field is filled
-      const hasMeasurements = Object.values(formData.initial_measurements).some(val => val !== '');
       const profilePayload = {
         ...formData,
-        dietary_preferences: formData.dietary_preferences === 'No Preference' ? '' : formData.dietary_preferences,
-        initial_measurements: hasMeasurements ? formData.initial_measurements : undefined
+        initial_measurements: {
+          waist_cm: Number(waist_cm),
+          chest_cm: Number(chest_cm),
+          hips_cm: Number(hips_cm),
+          left_arm_cm: Number(left_arm_cm),
+          right_arm_cm: Number(right_arm_cm),
+          left_thigh_cm: Number(left_thigh_cm),
+          right_thigh_cm: Number(right_thigh_cm)
+        }
       };
       
       await profileService.createProfile(profilePayload);
@@ -348,97 +364,123 @@ export const ProfileSetupPage = () => {
               </div>
             </div>
 
-            {/* Body Measurements Section - OPTIONAL */}
-            <div className="mb-8">
-              <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Body Measurements (Optional)</h3>
-                    <p className="text-sm text-gray-600 mt-1">Track your progress beyond weight with detailed measurements</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowMeasurements(!showMeasurements)}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all text-sm font-semibold"
-                  >
-                    {showMeasurements ? 'Hide' : 'Add Measurements'}
-                  </button>
-                </div>
-
-                {showMeasurements && (
-                  <>
-                    <p className="text-sm text-gray-600 mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                      <strong>Note:</strong> Measurements help track muscle gain and fat loss more accurately than weight alone. You'll receive reminders every 4 weeks to update them.
-                    </p>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-gray-700 font-semibold mb-2">Waist (cm)</label>
-                        <input
-                          type="number"
-                          step="0.1"
-                          name="measurement_waist_cm"
-                          value={formData.initial_measurements.waist_cm}
-                          onChange={handleChange}
-                          placeholder="e.g., 80.0"
-                          className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-gray-700 font-semibold mb-2">Chest (cm)</label>
-                        <input
-                          type="number"
-                          step="0.1"
-                          name="measurement_chest_cm"
-                          value={formData.initial_measurements.chest_cm}
-                          onChange={handleChange}
-                          placeholder="e.g., 95.0"
-                          className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-gray-700 font-semibold mb-2">Hips (cm)</label>
-                        <input
-                          type="number"
-                          step="0.1"
-                          name="measurement_hips_cm"
-                          value={formData.initial_measurements.hips_cm}
-                          onChange={handleChange}
-                          placeholder="e.g., 100.0"
-                          className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-gray-700 font-semibold mb-2">Arms (cm)</label>
-                        <input
-                          type="number"
-                          step="0.1"
-                          name="measurement_arms_cm"
-                          value={formData.initial_measurements.arms_cm}
-                          onChange={handleChange}
-                          placeholder="e.g., 35.0"
-                          className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-gray-700 font-semibold mb-2">Thighs (cm)</label>
-                        <input
-                          type="number"
-                          step="0.1"
-                          name="measurement_thighs_cm"
-                          value={formData.initial_measurements.thighs_cm}
-                          onChange={handleChange}
-                          placeholder="e.g., 55.0"
-                          className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
-                        />
-                      </div>
+              {/* Body Measurements Section - REQUIRED */}
+              <div className="col-span-1 md:col-span-2 animate-slide-up" style={{animationDelay: '0.6s'}}>
+                <div className="bg-gradient-to-r from-violet-50 to-purple-50 rounded-xl p-6 border-2 border-violet-200">
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="text-3xl">📏</span>
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900">Body Measurements <span className="text-red-500">(Required)</span></h3>
+                      <p className="text-sm text-gray-600">Essential for tracking your progress - You can update these anytime</p>
                     </div>
-                  </>
-                )}
+                  </div>
+
+                  <>
+                    <p className="text-sm text-gray-600 mb-4">
+                        💡 Measurements help track muscle gain and fat loss better than weight alone. You'll get reminders every 4 weeks to update them.
+                      </p>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-gray-700 font-semibold mb-2">Waist (cm) <span className="text-red-500">*</span></label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            name="measurement_waist_cm"
+                            value={formData.initial_measurements.waist_cm}
+                            onChange={handleChange}
+                            placeholder="e.g., 80"
+                            className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-100 transition-all duration-300"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-gray-700 font-semibold mb-2">Chest (cm) <span className="text-red-500">*</span></label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            name="measurement_chest_cm"
+                            value={formData.initial_measurements.chest_cm}
+                            onChange={handleChange}
+                            placeholder="e.g., 95"
+                            className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-100 transition-all duration-300"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-gray-700 font-semibold mb-2">Hips (cm) <span className="text-red-500">*</span></label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            name="measurement_hips_cm"
+                            value={formData.initial_measurements.hips_cm}
+                            onChange={handleChange}
+                            placeholder="e.g., 100"
+                            className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-100 transition-all duration-300"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-gray-700 font-semibold mb-2">Left Arm (cm)</label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            name="measurement_left_arm_cm"
+                            value={formData.initial_measurements.left_arm_cm}
+                            onChange={handleChange}
+                            placeholder="e.g., 32"
+                            className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-100 transition-all duration-300"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-gray-700 font-semibold mb-2">Right Arm (cm)</label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            name="measurement_right_arm_cm"
+                            value={formData.initial_measurements.right_arm_cm}
+                            onChange={handleChange}
+                            placeholder="e.g., 32"
+                            className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-100 transition-all duration-300"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-gray-700 font-semibold mb-2">Left Thigh (cm)</label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            name="measurement_left_thigh_cm"
+                            value={formData.initial_measurements.left_thigh_cm}
+                            onChange={handleChange}
+                            placeholder="e.g., 58"
+                            className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-100 transition-all duration-300"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-gray-700 font-semibold mb-2">Right Thigh (cm)</label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            name="measurement_right_thigh_cm"
+                            value={formData.initial_measurements.right_thigh_cm}
+                            onChange={handleChange}
+                            placeholder="e.g., 58"
+                            className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-100 transition-all duration-300"
+                            required
+                          />
+                        </div>
+                      </div>
+                    </>
+                </div>
               </div>
             </div>
             

@@ -24,6 +24,26 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  
+  // Premium Subscription
+  is_premium: {
+    type: Boolean,
+    default: false
+  },
+  premium_since: {
+    type: Date,
+    default: null
+  },
+  premium_expires: {
+    type: Date,
+    default: null
+  },
+  subscription_tier: {
+    type: String,
+    enum: ['free', 'premium', 'elite'],
+    default: 'free'
+  },
+  
   created_at: {
     type: Date,
     default: Date.now

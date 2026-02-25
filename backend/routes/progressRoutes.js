@@ -25,4 +25,16 @@ router.get('/dropoff/check', progressController.checkDropoffRisk);
 
 router.get('/forecast/goal', progressController.forecastGoal);
 
+// Goal progress
+router.get('/goal/progress', progressController.getGoalProgress);
+
+// Energy status
+router.get('/energy/status', progressController.getEnergyStatus);
+
+// Goal forecast with estimated date
+router.get('/goal/forecast', progressController.getGoalForecast);
+
+// Measurement trends
+router.get('/measurements/trends', progressController.getMeasurementTrends);
+
 export default router;

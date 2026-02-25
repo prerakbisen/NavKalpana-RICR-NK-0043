@@ -1,22 +1,132 @@
 import Groq from 'groq-sdk';
 import { gatherCompleteUserContext, formatUserContextForAI } from './userContextService.js';
 
-let groq = null;
+/**
+ * Multi-API Key Management System
+ * Distributes load across different Groq API keys for different features
+ * Prevents rate limiting and improves reliability
+ */
 
-const getGroqClient = () => {
-  if (!groq && process.env.GROQ_API_KEY && process.env.GROQ_API_KEY !== 'your_groq_api_key_here') {
-    groq = new Groq({
-      apiKey: process.env.GROQ_API_KEY
-    });
+// API Key Types
+const API_KEY_TYPES = {
+  WORKOUT: 'WORKOUT',
+  DIET: 'DIET',
+  ASSISTANT: 'ASSISTANT',
+  PLAN_ADJUSTMENT: 'PLAN_ADJUSTMENT',
+  FALLBACK: 'FALLBACK'
+};
+
+// Groq client instances (lazy initialization)
+const groqClients = {
+  [API_KEY_TYPES.WORKOUT]: null,
+  [API_KEY_TYPES.DIET]: null,
+  [API_KEY_TYPES.ASSISTANT]: null,
+  [API_KEY_TYPES.PLAN_ADJUSTMENT]: null,
+  [API_KEY_TYPES.FALLBACK]: null
+};
+
+// API key usage statistics (for monitoring)
+const apiKeyStats = {
+  [API_KEY_TYPES.WORKOUT]: { calls: 0, errors: 0, lastUsed: null },
+  [API_KEY_TYPES.DIET]: { calls: 0, errors: 0, lastUsed: null },
+  [API_KEY_TYPES.ASSISTANT]: { calls: 0, errors: 0, lastUsed: null },
+  [API_KEY_TYPES.PLAN_ADJUSTMENT]: { calls: 0, errors: 0, lastUsed: null },
+  [API_KEY_TYPES.FALLBACK]: { calls: 0, errors: 0, lastUsed: null }
+};
+
+/**
+ * Get API key for specific feature type
+ */
+const getApiKeyForType = (type) => {
+  const keyMap = {
+    [API_KEY_TYPES.WORKOUT]: process.env.GROQ_API_KEY_WORKOUT,
+    [API_KEY_TYPES.DIET]: process.env.GROQ_API_KEY_DIET,
+    [API_KEY_TYPES.ASSISTANT]: process.env.GROQ_API_KEY_ASSISTANT,
+    [API_KEY_TYPES.PLAN_ADJUSTMENT]: process.env.GROQ_API_KEY_PLAN_ADJUSTMENT,
+    [API_KEY_TYPES.FALLBACK]: process.env.GROQ_API_KEY
+  };
+  
+  const key = keyMap[type];
+  
+  // Check if key is valid
+  if (key && key !== 'your_groq_api_key_here' && key !== 'your_groq_api_key_for_workout_here' 
+      && key !== 'your_groq_api_key_for_diet_here' && key !== 'your_groq_api_key_for_assistant_here'
+      && key !== 'your_groq_api_key_for_plan_adjustment_here') {
+    return key;
   }
-  return groq;
+  
+  return null;
 };
 
-const isAIAvailable = () => {
-  return process.env.GROQ_API_KEY && process.env.GROQ_API_KEY !== 'your_groq_api_key_here';
+/**
+ * Get Groq client for specific feature type with automatic fallback
+ */
+const getGroqClient = (type = API_KEY_TYPES.FALLBACK) => {
+  // Try to get dedicated key for this type
+  let apiKey = getApiKeyForType(type);
+  let actualType = type;
+  
+  // If dedicated key not available, try fallback
+  if (!apiKey && type !== API_KEY_TYPES.FALLBACK) {
+    console.log(`⚠️  Dedicated API key for ${type} not found, using fallback key`);
+    apiKey = getApiKeyForType(API_KEY_TYPES.FALLBACK);
+    actualType = API_KEY_TYPES.FALLBACK;
+  }
+  
+  // If no key available at all
+  if (!apiKey) {
+    console.log('❌ No Groq API key available');
+    return null;
+  }
+  
+  // Create client if not exists
+  if (!groqClients[actualType]) {
+    groqClients[actualType] = new Groq({ apiKey });
+    console.log(`✅ Groq client initialized for ${actualType}`);
+  }
+  
+  // Update stats
+  apiKeyStats[actualType].calls++;
+  apiKeyStats[actualType].lastUsed = new Date();
+  
+  return groqClients[actualType];
 };
 
+/**
+ * Check if AI is available for specific feature type
+ */
+const isAIAvailable = (type = API_KEY_TYPES.FALLBACK) => {
+  const apiKey = getApiKeyForType(type);
+  if (apiKey) return true;
+  
+  // Check fallback
+  if (type !== API_KEY_TYPES.FALLBACK) {
+    return getApiKeyForType(API_KEY_TYPES.FALLBACK) !== null;
+  }
+  
+  return false;
+};
 
+/**
+ * Get API usage statistics (for monitoring and debugging)
+ */
+export const getApiKeyStats = () => {
+  return {
+    stats: apiKeyStats,
+    availableKeys: {
+      workout: !!getApiKeyForType(API_KEY_TYPES.WORKOUT),
+      diet: !!getApiKeyForType(API_KEY_TYPES.DIET),
+      assistant: !!getApiKeyForType(API_KEY_TYPES.ASSISTANT),
+      planAdjustment: !!getApiKeyForType(API_KEY_TYPES.PLAN_ADJUSTMENT),
+      fallback: !!getApiKeyForType(API_KEY_TYPES.FALLBACK)
+    }
+  };
+};
+
+/**
+ * Extract and parse JSON from AI response
+ * Handles common issues like markdown code blocks, trailing commas, etc.
+ */
 const extractAndParseJSON = (text) => {
   let cleanText = text.trim();
   cleanText = cleanText.replace(/```json\n?/gi, '').replace(/```\n?/g, '');
@@ -153,10 +263,12 @@ IMPORTANT:
 - Progress them appropriately based on their experience`;
 
   try {
-    const groqClient = getGroqClient();
+    const groqClient = getGroqClient(API_KEY_TYPES.WORKOUT);
     if (!groqClient) {
-      throw new Error('Groq client not available');
+      throw new Error('Groq client not available for workout generation');
     }
+    
+    console.log(`🏋️ Using dedicated WORKOUT API key for user ${user_id}, week ${weekNumber}`);
     
     const completion = await groqClient.chat.completions.create({
       messages: [
@@ -182,10 +294,12 @@ IMPORTANT:
     } catch (parseError) {
       console.error('JSON Parse Error:', parseError.message);
       console.error('Raw response (first 500 chars):', text.substring(0, 500));
+      apiKeyStats[API_KEY_TYPES.WORKOUT].errors++;
       throw new Error('Failed to generate AI workout plan');
     }
   } catch (error) {
     console.error('Groq API Error:', error);
+    apiKeyStats[API_KEY_TYPES.WORKOUT].errors++;
     throw new Error('Failed to generate AI workout plan');
   }
 };
@@ -304,10 +418,12 @@ IMPORTANT:
 - Ensure meals are practical and commonly available in India`;
 
   try {
-    const groqClient = getGroqClient();
+    const groqClient = getGroqClient(API_KEY_TYPES.DIET);
     if (!groqClient) {
-      throw new Error('Groq client not available');
+      throw new Error('Groq client not available for diet generation');
     }
+    
+    console.log(`🍽️ Using dedicated DIET API key for user ${user_id}, week ${weekNumber}`);
     
     const completion = await groqClient.chat.completions.create({
       messages: [
@@ -333,10 +449,12 @@ IMPORTANT:
     } catch (parseError) {
       console.error('JSON Parse Error:', parseError.message);
       console.error('Raw response (first 500 chars):', text.substring(0, 500));
+      apiKeyStats[API_KEY_TYPES.DIET].errors++;
       throw new Error('Failed to generate AI diet plan');
     }
   } catch (error) {
     console.error('Groq API Error:', error);
+    apiKeyStats[API_KEY_TYPES.DIET].errors++;
     throw new Error('Failed to generate AI diet plan');
   }
 };
@@ -417,10 +535,12 @@ FORMATTING RULES:
 - Be specific with numbers and timeframes`;
 
   try {
-    const groqClient = getGroqClient();
+    const groqClient = getGroqClient(API_KEY_TYPES.ASSISTANT);
     if (!groqClient) {
-      throw new Error('Groq client not available');
+      throw new Error('Groq client not available for assistant');
     }
+    
+    console.log(`💬 Using dedicated ASSISTANT API key for user ${user_id}`);
     
     const completion = await groqClient.chat.completions.create({
       messages: [
@@ -446,12 +566,169 @@ FORMATTING RULES:
     } catch (parseError) {
       console.error('JSON Parse Error:', parseError.message);
       console.error('Raw response (first 500 chars):', text.substring(0, 500));
+      apiKeyStats[API_KEY_TYPES.ASSISTANT].errors++;
       throw new Error('Failed to parse AI response as JSON');
     }
   } catch (error) {
     console.error('Groq API Error:', error);
+    apiKeyStats[API_KEY_TYPES.ASSISTANT].errors++;
     throw new Error('Failed to generate AI coaching response');
   }
 };
 
-export { isAIAvailable };
+export { isAIAvailable, API_KEY_TYPES };
+
+/**
+ * AI-Powered Smart Plan Adjustment
+ * Uses Groq AI to analyze 4 weeks of data and recommend plan adjustments
+ */
+export const generateAIPlanAdjustment = async (userData) => {
+  const client = getGroqClient(API_KEY_TYPES.PLAN_ADJUSTMENT);
+  
+  if (!client) {
+    throw new Error('Groq AI not configured');
+  }
+
+  const {
+    age,
+    gender,
+    goal,
+    currentWeight,
+    targetWeight,
+    activityLevel,
+    experienceLevel,
+    weekWeights, // [w1, w2, w3, w4]
+    avgWeeklyChange,
+    workoutAdherence,
+    dietAdherence,
+    habitScore,
+    fatigueCount,
+    currentCalories,
+    currentMacros, // {protein, carbs, fat}
+    setsPerWeek,
+    splitType
+  } = userData;
+
+  const prompt = `You are FitAI Smart Plan Adjustment Engine.
+
+Your role is to:
+1. Analyze past 4 weeks user fitness data.
+2. Determine if plan adjustment is required.
+3. Protect user health and safety.
+4. Follow evidence-based fitness principles.
+5. Avoid extreme calorie reductions.
+6. Avoid unsafe workout overload.
+7. Prioritize sustainability and adherence.
+
+Adjustment Rules:
+
+For Weight Loss:
+- If weight loss < 0.3 kg/week AND adherence > 75% → Increase deficit slightly (100–150 kcal).
+- If weight loss > 1 kg/week → Reduce deficit (increase calories by 150–200 kcal).
+- If adherence < 60% → Simplify plan instead of increasing deficit.
+
+For Muscle Gain:
+- If weight stagnant for 3 weeks → Increase volume by 5–10%.
+- If fatigue high → Reduce intensity.
+- If adherence low → Simplify split.
+
+Always return structured JSON output only.
+
+JSON format:
+{
+  "adjustmentRequired": true/false,
+  "reason": "...",
+  "newCalorieTarget": number,
+  "newMacroSplit": {
+    "protein": percentage,
+    "carbs": percentage,
+    "fat": percentage
+  },
+  "workoutChanges": {
+    "volumeChangePercent": number,
+    "newWorkoutStructure": "description"
+  },
+  "dashboardNotification": "message for user",
+  "explanation": "clear short explanation"
+}
+
+Do not include extra text outside JSON.
+
+User Profile:
+Age: ${age}
+Gender: ${gender}
+Goal: ${goal}
+Current Weight: ${currentWeight} kg
+Target Weight: ${targetWeight} kg
+Activity Level: ${activityLevel}
+Experience Level: ${experienceLevel}
+
+Past 4 Weeks Data:
+Week 1 Weight: ${weekWeights[0]} kg
+Week 2 Weight: ${weekWeights[1]} kg
+Week 3 Weight: ${weekWeights[2]} kg
+Week 4 Weight: ${weekWeights[3]} kg
+Average Weekly Change: ${avgWeeklyChange} kg
+Workout Adherence: ${workoutAdherence}%
+Diet Adherence: ${dietAdherence}%
+Habit Score: ${habitScore}
+Fatigue Reports (last 7 days): ${fatigueCount}
+
+Current Plan:
+Calorie Target: ${currentCalories} kcal
+Macro Split: ${currentMacros.protein}% protein, ${currentMacros.carbs}% carbs, ${currentMacros.fat}% fat
+Workout Volume: ${setsPerWeek} sets per week
+Workout Structure: ${splitType}
+
+Evaluate and determine if adjustment required.
+Return structured JSON only.`;
+
+  try {
+    const client = getGroqClient(API_KEY_TYPES.PLAN_ADJUSTMENT);
+    
+    if (!client) {
+      throw new Error('Groq AI not configured for plan adjustment');
+    }
+
+    console.log(`📊 Using dedicated PLAN_ADJUSTMENT API key (70B model)`);
+
+    const completion = await client.chat.completions.create({
+      messages: [
+        {
+          role: "system",
+          content: "You are a professional fitness AI that analyzes user data and provides plan adjustments in strict JSON format. Always return valid JSON only, no extra text."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      model: "llama-3.3-70b-versatile", // Updated to supported 70B model
+      temperature: 0.3, // Lower temperature for more consistent, factual responses
+      max_tokens: 1000
+    });
+
+    const text = completion.choices[0]?.message?.content || '';
+    
+    // Clean up and extract JSON
+    try {
+      const parsedData = extractAndParseJSON(text);
+      
+      // Validate required fields
+      if (typeof parsedData.adjustmentRequired !== 'boolean') {
+        throw new Error('Invalid response: missing adjustmentRequired field');
+      }
+      
+      return parsedData;
+    } catch (parseError) {
+      console.error('JSON Parse Error:', parseError.message);
+      console.error('Raw response:', text);
+      apiKeyStats[API_KEY_TYPES.PLAN_ADJUSTMENT].errors++;
+      throw new Error('Failed to parse AI plan adjustment response');
+    }
+  } catch (error) {
+    console.error('Groq API Error:', error);
+    apiKeyStats[API_KEY_TYPES.PLAN_ADJUSTMENT].errors++;
+    throw new Error('Failed to generate AI plan adjustment');
+  }
+};

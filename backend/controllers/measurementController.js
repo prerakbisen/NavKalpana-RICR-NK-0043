@@ -74,3 +74,52 @@ export default {
   compareMeasurements,
   getMeasurementHistory
 };
+
+
+// Analyze measurements with AI and optionally regenerate plans
+export const analyzeMeasurementsWithAI = async (req, res) => {
+  try {
+    console.log('🤖 AI measurement analysis requested');
+    
+    const analysis = await measurementService.analyzeMeasurementsWithAI(req.user_id);
+    
+    // Check if user wants to auto-regenerate plans
+    const { auto_regenerate } = req.query;
+    
+    let regenerationResults = null;
+    if (auto_regenerate === 'true' && (analysis.needs_diet_adjustment || analysis.needs_workout_adjustment)) {
+      console.log('🔄 Auto-regenerating plans...');
+      regenerationResults = await measurementService.regeneratePlansBasedOnMeasurements(req.user_id, analysis);
+    }
+    
+    res.status(200).json({
+      ...analysis,
+      regeneration_results: regenerationResults
+    });
+  } catch (error) {
+    console.error('❌ AI analysis error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Regenerate plans based on measurement analysis
+export const regeneratePlans = async (req, res) => {
+  try {
+    console.log('🔄 Manual plan regeneration requested');
+    
+    // First get the analysis
+    const analysis = await measurementService.analyzeMeasurementsWithAI(req.user_id);
+    
+    // Then regenerate plans
+    const results = await measurementService.regeneratePlansBasedOnMeasurements(req.user_id, analysis);
+    
+    res.status(200).json({
+      success: true,
+      analysis: analysis.analysis,
+      regeneration_results: results
+    });
+  } catch (error) {
+    console.error('❌ Plan regeneration error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};

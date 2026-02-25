@@ -17,12 +17,22 @@ export const ProfilePage = () => {
     weight_kg: '',
     height_cm: '',
     goal: '',
+    goal_timeframe: '',
     target_weight_kg: '',
     experience_level: '',
     available_days_per_week: '',
     dietary_preferences: '',
     allergies: '',
-    injuries_limitations: ''
+    injuries_limitations: '',
+    initial_measurements: {
+      waist_cm: '',
+      chest_cm: '',
+      hips_cm: '',
+      left_arm_cm: '',
+      right_arm_cm: '',
+      left_thigh_cm: '',
+      right_thigh_cm: ''
+    }
   });
 
   useEffect(() => {
@@ -39,12 +49,30 @@ export const ProfilePage = () => {
         weight_kg: res.data.weight_kg,
         height_cm: res.data.height_cm,
         goal: res.data.goal,
+        goal_timeframe: res.data.goal_timeframe || '12 weeks',
         target_weight_kg: res.data.target_weight_kg,
         experience_level: res.data.experience_level,
         available_days_per_week: res.data.available_days_per_week,
         dietary_preferences: res.data.dietary_preferences || '',
         allergies: res.data.allergies || '',
-        injuries_limitations: res.data.injuries_limitations || ''
+        injuries_limitations: res.data.injuries_limitations || '',
+        initial_measurements: res.data.initial_measurements ? {
+          waist_cm: res.data.initial_measurements.waist_cm || '',
+          chest_cm: res.data.initial_measurements.chest_cm || '',
+          hips_cm: res.data.initial_measurements.hips_cm || '',
+          left_arm_cm: res.data.initial_measurements.left_arm_cm || '',
+          right_arm_cm: res.data.initial_measurements.right_arm_cm || '',
+          left_thigh_cm: res.data.initial_measurements.left_thigh_cm || '',
+          right_thigh_cm: res.data.initial_measurements.right_thigh_cm || ''
+        } : {
+          waist_cm: '',
+          chest_cm: '',
+          hips_cm: '',
+          left_arm_cm: '',
+          right_arm_cm: '',
+          left_thigh_cm: '',
+          right_thigh_cm: ''
+        }
       });
     } catch (err) {
       toast.error('Failed to load profile');
@@ -54,10 +82,24 @@ export const ProfilePage = () => {
   };
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    const { name, value } = e.target;
+    
+    // Handle nested measurement fields
+    if (name.startsWith('measurements_')) {
+      const measurementField = name.replace('measurements_', '');
+      setFormData({
+        ...formData,
+        initial_measurements: {
+          ...formData.initial_measurements,
+          [measurementField]: value
+        }
+      });
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value
+      });
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -164,6 +206,11 @@ export const ProfilePage = () => {
                 <div className="bg-gradient-to-br from-orange-50 to-amber-50 p-4 rounded-xl border border-orange-200">
                   <label className="block text-sm font-bold text-gray-600 mb-2">Target Weight</label>
                   <p className="text-gray-900 text-xl font-semibold">{profile.target_weight_kg} kg</p>
+                </div>
+                
+                <div className="bg-gradient-to-br from-indigo-50 to-purple-50 p-4 rounded-xl border border-indigo-200">
+                  <label className="block text-sm font-bold text-gray-600 mb-2">Goal Timeframe</label>
+                  <p className="text-gray-900 text-xl font-semibold">{profile.goal_timeframe || '12 weeks'}</p>
                 </div>
                 
                 <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-200">
@@ -283,6 +330,23 @@ export const ProfilePage = () => {
                 </div>
                 
                 <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Goal Timeframe</label>
+                  <select
+                    name="goal_timeframe"
+                    value={formData.goal_timeframe}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-300"
+                  >
+                    <option value="8 weeks">8 weeks</option>
+                    <option value="12 weeks">12 weeks</option>
+                    <option value="16 weeks">16 weeks</option>
+                    <option value="6 months">6 months</option>
+                    <option value="9 months">9 months</option>
+                    <option value="1 year">1 year</option>
+                  </select>
+                </div>
+                
+                <div>
                   <label className="block text-sm font-bold text-gray-700 mb-2">Target Weight (kg)</label>
                   <input
                     type="number"
@@ -345,6 +409,114 @@ export const ProfilePage = () => {
                     onChange={handleChange}
                     placeholder="e.g., Nuts, Dairy, Gluten"
                     className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition-all duration-300"
+                  />
+                </div>
+
+                {/* Body Measurements Section (MANDATORY) */}
+                <div className="md:col-span-2 mt-6 pt-6 border-t-2 border-gray-300">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="text-2xl">📏</span>
+                    <h3 className="text-xl font-bold text-gray-900">Body Measurements (Required)</h3>
+                    <span className="text-red-500 font-bold text-lg">*</span>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-4">These measurements are essential for tracking your progress on the dashboard</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Waist (cm) <span className="text-red-500">*</span></label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    name="measurements_waist_cm"
+                    value={formData.initial_measurements.waist_cm}
+                    onChange={handleChange}
+                    placeholder="e.g., 85"
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-300"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Chest (cm) <span className="text-red-500">*</span></label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    name="measurements_chest_cm"
+                    value={formData.initial_measurements.chest_cm}
+                    onChange={handleChange}
+                    placeholder="e.g., 95"
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-300"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Hips (cm) <span className="text-red-500">*</span></label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    name="measurements_hips_cm"
+                    value={formData.initial_measurements.hips_cm}
+                    onChange={handleChange}
+                    placeholder="e.g., 95"
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-300"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Left Arm (cm) <span className="text-red-500">*</span></label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    name="measurements_left_arm_cm"
+                    value={formData.initial_measurements.left_arm_cm}
+                    onChange={handleChange}
+                    placeholder="e.g., 32"
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-300"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Right Arm (cm) <span className="text-red-500">*</span></label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    name="measurements_right_arm_cm"
+                    value={formData.initial_measurements.right_arm_cm}
+                    onChange={handleChange}
+                    placeholder="e.g., 32"
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-300"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Left Thigh (cm) <span className="text-red-500">*</span></label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    name="measurements_left_thigh_cm"
+                    value={formData.initial_measurements.left_thigh_cm}
+                    onChange={handleChange}
+                    placeholder="e.g., 58"
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-300"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Right Thigh (cm) <span className="text-red-500">*</span></label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    name="measurements_right_thigh_cm"
+                    value={formData.initial_measurements.right_thigh_cm}
+                    onChange={handleChange}
+                    placeholder="e.g., 58"
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-300"
+                    required
                   />
                 </div>
                 

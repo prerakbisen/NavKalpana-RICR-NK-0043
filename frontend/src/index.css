@@ -427,3 +427,55 @@ h1, h2, h3, h4, h5, h6 {
 .text-emphasis {
   @apply text-violet-600 font-semibold;
 }
+
+
+/* Print Styles for Reports */
+@media print {
+  @page {
+    size: A4;
+    margin: 1cm;
+  }
+  
+  body {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-title {
+    display: block !important;
+  }
+  
+  .report-container {
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+  
+  /* Ensure colors are preserved in print */
+  .bg-gradient-to-br,
+  .bg-gradient-to-r {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  
+  /* Page breaks */
+  .page-break-before {
+    page-break-before: always;
+  }
+  
+  .page-break-after {
+    page-break-after: always;
+  }
+  
+  .page-break-inside-avoid {
+    page-break-inside: avoid;
+  }
+  
+  /* Ensure cards don't break across pages */
+  .bg-white {
+    page-break-inside: avoid;
+  }
+}
