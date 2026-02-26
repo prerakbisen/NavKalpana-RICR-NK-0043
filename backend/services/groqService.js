@@ -482,7 +482,7 @@ export const generateAICoachingResponse = async (user_id, question) => {
     'meal', 'eating', 'hungry', 'appetite', 'metabolism', 'burn', 'reps', 'sets',
     'form', 'technique', 'stretch', 'warm up', 'cool down', 'hydration', 'water',
     'supplement', 'vitamin', 'creatine', 'whey', 'running', 'jogging', 'walking',
-    'cycling', 'swimming', 'yoga', 'pilates', 'hiit', 'endurance', 'stamina'
+    'cycling', 'swimming', 'yoga', 'pilates', 'hiit', 'endurance', 'stamina','loose weight'
   ];
   
   // Keywords that clearly indicate NON-fitness topics (should be rejected)
