@@ -3,7 +3,7 @@ import axios from 'axios';
 const API_URL = 'https://navkalpana-ricr-nk-0043-backend-gha8.onrender.com';
 
 const api = axios.create({
-  baseURL: '${API_URL}/api',
+  baseURL: `${API_URL}/api`,
   headers: {
     'Content-Type': 'application/json'
   }
