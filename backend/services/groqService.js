@@ -468,55 +468,7 @@ export const generateAICoachingResponse = async (user_id, question) => {
     };
   }
 
-  // Pre-filter: Check for obvious non-fitness keywords
-  const lowerQuestion = question.toLowerCase();
-  
-  // Keywords that indicate fitness/health topics (should be allowed)
-  const fitnessKeywords = [
-    'workout', 'exercise', 'diet', 'nutrition', 'weight', 'muscle', 'fat', 'calories', 
-    'protein', 'fitness', 'training', 'gym', 'health', 'body', 'strength', 'cardio', 
-    'recovery', 'sleep', 'energy', 'fatigue', 'goal', 'progress', 'plan', 'biceps',
-    'triceps', 'chest', 'back', 'legs', 'shoulders', 'abs', 'core', 'squat', 'deadlift',
-    'bench press', 'injury', 'injuries', 'pain', 'sore', 'rest day', 'bulk', 'cut',
-    'lean', 'tone', 'gain', 'lose', 'build', 'grow', 'macros', 'carbs', 'fats',
-    'meal', 'eating', 'hungry', 'appetite', 'metabolism', 'burn', 'reps', 'sets',
-    'form', 'technique', 'stretch', 'warm up', 'cool down', 'hydration', 'water',
-    'supplement', 'vitamin', 'creatine', 'whey', 'running', 'jogging', 'walking',
-    'cycling', 'swimming', 'yoga', 'pilates', 'hiit', 'endurance', 'stamina','loose weight'
-  ];
-  
-  // Keywords that clearly indicate NON-fitness topics (should be rejected)
-  const nonFitnessKeywords = [
-    'movie', 'film', 'actor', 'actress', 'celebrity', 'singer', 'song', 'music', 'concert',
-    'politics', 'president', 'election', 'government', 'minister', 'parliament', 'vote',
-    'coding', 'programming', 'javascript', 'python', 'html', 'css', 'software', 'app development',
-    'cricket score', 'football score', 'match result', 'ipl', 'world cup winner', 'tournament',
-    'capital of', 'population of', 'who invented', 'when was', 'history of',
-    'stock market', 'cryptocurrency', 'bitcoin', 'investment', 'trading',
-    'relationship advice', 'dating', 'marriage', 'breakup', 'love',
-    'weather', 'climate', 'temperature', 'rain', 'forecast',
-    'car', 'vehicle', 'driving', 'license', 'traffic',
-    'phone', 'mobile', 'laptop', 'computer', 'gadget',
-    'book', 'novel', 'author', 'story', 'poem'
-  ];
-  
-  // Check if question contains fitness keywords
-  const hasFitnessKeyword = fitnessKeywords.some(keyword => lowerQuestion.includes(keyword));
-  
-  // Check if question contains non-fitness keywords
-  const hasNonFitnessKeyword = nonFitnessKeywords.some(keyword => lowerQuestion.includes(keyword));
-  
-  // If question has fitness keywords, allow it (even if it has some non-fitness words)
-  if (hasFitnessKeyword) {
-    // This is likely a fitness question, proceed to AI
-  } else if (hasNonFitnessKeyword) {
-    // Has non-fitness keywords and NO fitness keywords, reject
-    return {
-      response: "Sorry, I can't help with that. I'm your FitAI fitness assistant and can only answer questions related to your health, workouts, diet, and progress.",
-      confidence: 'High'
-    };
-  }
-  // If neither fitness nor non-fitness keywords detected, let AI decide
+  // No manual keyword filtering; relevancy will be determined by the AI prompt below.
 
   const contextPrompt = formatUserContextForAI(userContext);
   
@@ -525,99 +477,33 @@ export const generateAICoachingResponse = async (user_id, question) => {
 === USER QUESTION ===
 "${question}"
 
-=== CRITICAL INSTRUCTION: TOPIC VALIDATION ===
-BEFORE answering, you MUST first determine if this question is related to fitness/health.
+You are a knowledgeable fitness and nutrition coach. Analyze the question above and decide whether it is related to health, workouts, diet, or progress.
 
-STEP 1: CHECK IF QUESTION IS ABOUT:
-✅ ALLOWED TOPICS (answer normally):
-- Fitness, workouts, exercises, training
-- Diet, nutrition, meals, calories, macros
-- Weight loss, fat loss, muscle gain, body recomposition
-- Recovery, rest days, sleep, fatigue
-- Progress tracking, measurements, body composition
-- Health and wellness related to fitness
-- User's personal fitness data (name, age, weight, goal, email)
-- FitAI features, dashboard, plans
+- If the user only greets ("hi", "hello", "hey", etc.) without any other intent, respond with a friendly greeting JSON such as:
+  {"response":"Hi there! I'm your AI Fitness Coach – ask me any question about workouts, diet, or your progress.","confidence":"High"}
+  (this is considered on-topic and should still be valid JSON)
 
-❌ FORBIDDEN TOPICS (reject immediately):
-- Politics, government, elections, laws
-- Movies, TV shows, entertainment, celebrities
-- Sports scores, teams, matches (unless asking about fitness training)
-- Coding, programming, technology
-- General knowledge, trivia, facts unrelated to fitness
-- Personal advice about relationships, career, finance
-- Current events, news, world affairs
-- Science, history, geography (unless directly fitness-related)
-- Any topic not directly related to fitness/health
+- If the question is unrelated or clearly off-topic, reply with exactly this JSON and nothing else:
+  {"response":"Sorry, I can't help with that. I'm your FitAI fitness assistant and can only answer questions related to your health, workouts, diet, and progress.","confidence":"High"}
 
-STEP 2: IF QUESTION IS FORBIDDEN:
-Return this EXACT JSON structure:
+- If the question is on-topic and not merely a greeting, provide personalized advice using the format described below. Always return valid JSON only, with no extraneous text. The JSON structure should match the one used elsewhere in this file (greeting, steps array, tip, data_insights, confidence), and you may reference userContext fields for specifics.
+
+IMPORTANT INSTRUCTIONS FOR ON-TOPIC QUESTIONS:
+- Address the user by name.
+- Use their actual stats: age, weight, goal, adherence rates, etc.
+- If asked about their name/email/age/weight/goal, give accurate responses.
+
+RESPONSE FORMAT FOR FITNESS QUESTIONS:
 {
-  "response": "Sorry, I can't help with that. I'm your FitAI fitness assistant and can only answer questions related to your health, workouts, diet, and progress.",
+  "response": "Hi ${userContext.user.name}!\\n\\nBrief 2-3 sentence summary of their situation.\\n\\nStep 1: [Action Title]\\nClear explanation with specific numbers...\\n\\nStep 2: ...\\n\\nStep 3: ...\\n\\nIMPORTANT: ...\\n\\nNOTE: ...",
+  "steps": ["...","...","..."],
+  "tip": "...",
+  "data_insights": "...",
   "confidence": "High"
 }
 
-DO NOT add steps, tips, or any other fields. DO NOT try to relate it to fitness. Just return the rejection message.
-
-STEP 3: IF QUESTION IS ALLOWED:
-Proceed with personalized fitness advice using the format below.
-
-=== RESPONSE FORMAT FOR FITNESS QUESTIONS ===
-IMPORTANT INSTRUCTIONS:
-- If they ask about their NAME, tell them: "Your name is ${userContext.user.name}"
-- If they ask about their EMAIL, tell them: "Your email is ${userContext.user.email}"
-- If they ask about their AGE, tell them: "You are ${userContext.profile.age} years old"
-- If they ask about their WEIGHT, tell them: "Your current weight is ${userContext.profile.current_weight_kg} kg"
-- If they ask about their GOAL, tell them: "Your goal is ${userContext.profile.goal}"
-- If they ask "who am I" or "what's my name", respond with their name and key details
-- Always address them by their name when appropriate
-- Reference their specific data in every response
-
-RESPONSE FORMAT REQUIREMENTS:
-1. Start with a brief greeting using their name
-2. Provide a SHORT summary (2-3 sentences max)
-3. Break down your advice into CLEAR, NUMBERED STEPS
-4. Each step should be actionable and specific
-5. Use bullet points for sub-items within steps
-6. Keep paragraphs SHORT (2-3 sentences max)
-7. Use line breaks between sections for readability
-8. Highlight IMPORTANT information with IMPORTANT: prefix
-9. Highlight CRITICAL warnings with CRITICAL: prefix
-10. Use NOTE: for helpful tips
-
-ANALYZE THEIR COMPLETE DATA:
-1. Review their progress history - what patterns do you see?
-2. Check their adherence rates - are they consistent?
-3. Look at their weight trend - is it matching their goal?
-4. Consider their energy levels and fatigue
-5. Review their workout and diet history
-6. Remember their personal information (name, age, email, etc.)
-
-Provide a response in JSON format with this EXACT structure:
-{
-  "response": "Hi ${userContext.user.name}!\\n\\nBrief 2-3 sentence summary of their situation.\\n\\nStep 1: [Action Title]\\nClear explanation with specific numbers (e.g., increase protein to 150g daily).\\n\\nStep 2: [Action Title]\\nClear explanation with specific numbers.\\n\\nStep 3: [Action Title]\\nClear explanation with specific numbers.\\n\\nIMPORTANT: Highlight critical information here.\\n\\nNOTE: Add helpful tips here.",
-  "steps": [
-    "Increase daily protein intake to 150g (currently at 100g)",
-    "Add 2 extra sets to compound exercises",
-    "Reduce rest days from 3 to 2 per week",
-    "Track weight every Monday morning"
-  ],
-  "tip": "Meal prep on Sundays to hit your 150g protein target consistently",
-  "data_insights": "Your 85% workout adherence is excellent, but diet adherence at 60% needs improvement for your muscle gain goal",
-  "confidence": "High"
-}
-
-FORMATTING RULES:
-- Use Step 1:, Step 2:, etc. for main action items
-- Use numbers with units (70kg, 2000 kcal, 85%)
-- Use IMPORTANT: for critical information
-- Use CRITICAL: for warnings
-- Use NOTE: for helpful tips
-- Use \\n\\n for paragraph breaks
-- Keep sentences short and actionable
-- Reference ACTUAL data (their weight, adherence %, etc.)
-- Address them by name
-- Be specific with numbers and timeframes`;
+Make sure the AI understands to parse misspellings such as "loose weight" as weight loss and treat them as fitness-related.
+`;
 
   try {
     const groqClient = getGroqClient(API_KEY_TYPES.ASSISTANT);
